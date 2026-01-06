@@ -1,6 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Client } from '../types';
 import { ArrowLeftIcon, FolderIcon, MagnifyingGlassIcon } from '../components/icons/DummyIcons';
+import { Input } from '../components/ui/Input';
+import { Card } from '../components/ui/Card';
+import { TableContainer, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
 
 interface ClientDocumentationPageProps {
     onBack: () => void;
@@ -10,10 +14,10 @@ interface ClientDocumentationPageProps {
 
 const getStatusColor = (status: Client['documentation']['status']) => {
     switch(status) {
-        case 'Collected': return 'bg-green-100 text-green-800';
-        case 'Ready': return 'bg-blue-100 text-blue-800';
-        case 'Pending': return 'bg-yellow-100 text-yellow-800';
-        default: return 'bg-gray-100 text-gray-800';
+        case 'Collected': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 focus:ring-green-500';
+        case 'Ready': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 focus:ring-blue-500';
+        case 'Pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 focus:ring-yellow-500';
+        default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 focus:ring-gray-500';
     }
 }
 
@@ -55,66 +59,65 @@ const ClientDocumentationPage: React.FC<ClientDocumentationPageProps> = ({ onBac
     return (
         <div className="space-y-6">
             <div>
-                <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 mb-2">
+                <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-2 transition-colors">
                     <ArrowLeftIcon className="w-5 h-5" /> Back to Administration
                 </button>
                 <div className="flex items-center gap-4">
-                    <FolderIcon className="w-10 h-10 text-orange-600" />
+                    <FolderIcon className="w-10 h-10 text-orange-600 dark:text-orange-400" />
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Client Documentation</h1>
-                        <p className="text-gray-500 mt-1">Track and manage client document collection status.</p>
+                        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Client Documentation</h1>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">Track and manage client document collection status.</p>
                     </div>
                 </div>
             </div>
 
-             <div className="bg-white p-4 rounded-lg shadow-sm border">
+             <Card className="p-4">
                 <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    <Input
                         type="text"
                         placeholder="Search by client name, plot, or location..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="pl-10"
                     />
                 </div>
-            </div>
+            </Card>
 
             <div className="space-y-6">
                 {Object.keys(clientsByProperty).map(location => (
-                    <div key={location} className="bg-white rounded-lg shadow-sm border">
-                        <h3 className="px-6 py-4 text-lg font-semibold text-gray-800 border-b">{location}</h3>
-                        <div className="overflow-x-auto">
+                    <Card key={location} title={location} className="overflow-hidden">
+                        <TableContainer className="border-0 shadow-none rounded-none">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-left">
+                                <Thead>
                                     <tr>
-                                        <th className="px-6 py-3 font-medium text-gray-600">Client</th>
-                                        <th className="px-6 py-3 font-medium text-gray-600">Plot</th>
-                                        <th className="px-6 py-3 font-medium text-gray-600">Doc Status</th>
+                                        <Th>Client</Th>
+                                        <Th>Plot</Th>
+                                        <Th>Doc Status</Th>
                                     </tr>
-                                </thead>
-                                <tbody className="divide-y">
+                                </Thead>
+                                <Tbody>
                                     {clientsByProperty[location].map(client => (
-                                        <tr key={client.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{client.name}</td>
-                                            <td className="px-6 py-4 text-gray-600">{client.plot}</td>
-                                            <td className="px-6 py-4">
+                                        <Tr key={client.id}>
+                                            <Td className="font-medium text-gray-900 dark:text-white">{client.name}</Td>
+                                            <Td className="text-gray-600 dark:text-gray-300">{client.plot}</Td>
+                                            <Td>
                                                 <select
                                                     value={client.documentation.status}
                                                     onChange={(e) => handleStatusChange(client.id, e.target.value as Client['documentation']['status'])}
-                                                    className={`p-1 text-xs font-semibold rounded-md border-transparent focus:ring-2 focus:ring-blue-500 ${getStatusColor(client.documentation.status)}`}
+                                                    className={`p-1.5 text-xs font-semibold rounded-md border-transparent focus:outline-none focus:ring-2 cursor-pointer transition-colors ${getStatusColor(client.documentation.status)}`}
                                                 >
-                                                    <option value="Pending">Pending</option>
-                                                    <option value="Ready">Ready for Pickup</option>
-                                                    <option value="Collected">Collected</option>
+                                                    <option value="Pending" className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white">Pending</option>
+                                                    <option value="Ready" className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white">Ready for Pickup</option>
+                                                    <option value="Collected" className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white">Collected</option>
                                                 </select>
-                                            </td>
-                                        </tr>
+                                            </Td>
+                                        </Tr>
                                     ))}
-                                </tbody>
+                                </Tbody>
                             </table>
-                        </div>
-                    </div>
+                        </TableContainer>
+                    </Card>
                 ))}
             </div>
         </div>

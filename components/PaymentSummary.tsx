@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Client } from '../types';
 
@@ -13,10 +14,10 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({ payment }) => {
     const paidPercentage = payment.total > 0 ? (payment.paid / payment.total) * 100 : 0;
     
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Payment Summary</h3>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Payment Summary</h3>
             <div className="space-y-4 text-sm">
-                <div className="w-full bg-gray-200 rounded-full h-4">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
                     <div 
                         className="bg-green-500 h-4 rounded-full" 
                         style={{ width: `${paidPercentage}%` }}
@@ -28,22 +29,22 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({ payment }) => {
                 </div>
 
                 <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Paid</span>
-                    <span className="font-semibold text-green-600">{formatCurrency(payment.paid)}</span>
+                    <span className="text-gray-500 dark:text-gray-400">Paid</span>
+                    <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(payment.paid)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Balance</span>
-                    <span className="font-semibold text-red-600">{formatCurrency(payment.balance)}</span>
+                    <span className="text-gray-500 dark:text-gray-400">Balance</span>
+                    <span className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(payment.balance)}</span>
                 </div>
-                 <hr className="my-2"/>
+                 <hr className="my-2 border-gray-200 dark:border-gray-700"/>
                 <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Total Amount</span>
-                    <span className="font-bold text-gray-800">{formatCurrency(payment.total)}</span>
+                    <span className="text-gray-500 dark:text-gray-400">Total Amount</span>
+                    <span className="font-bold text-gray-800 dark:text-white">{formatCurrency(payment.total)}</span>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                    <p className="text-gray-500">Next payment due on:</p>
-                    <p className="font-bold text-lg text-blue-600">{payment.dueDate}</p>
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
+                    <p className="text-gray-500 dark:text-gray-400">Next payment due on:</p>
+                    <p className="font-bold text-lg text-blue-600 dark:text-blue-400">{payment.dueDate}</p>
                 </div>
             </div>
         </div>

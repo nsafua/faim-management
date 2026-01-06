@@ -1,7 +1,10 @@
+
 import React, { useState, ChangeEvent, FormEvent, useEffect, useCallback, useMemo } from 'react';
 import { Client, Property } from '../types';
 import { XIcon } from './icons/XIcon';
 import { UserGroupIcon, BuildingLibraryIcon, BriefcaseIcon, CheckCircleIcon } from './icons/DummyIcons';
+import { PhoneInput } from './ui/PhoneInput';
+import { EmailInput } from './ui/EmailInput';
 
 export type FormData = {
     // Personal
@@ -12,7 +15,7 @@ export type FormData = {
     telephone: string;
     email: string;
     gender: string;
-    photo: string; // base64 string
+    photo: string; // base64 string or URL
     // Professional
     placeOfWork: string;
     profession: string;
@@ -29,13 +32,12 @@ export type FormData = {
     witnessPhone: string;
     // Property
     paymentDate: string;
-// FIX: Added 'Cheque' to the payment method types to align with the data model.
     paymentMethod: 'Cash' | 'Bank Transfer' | 'MoMo' | 'Cheque' | 'Other';
     location: string;
     propertyType: 'Residential' | 'Commercial';
     plotNumber: string;
     plannedDevelopmentYear: string;
-    filledFormPdf: string | null; // base64 string
+    filledFormPdf: string | null; // base64 string or URL
     // Indenture
     indentureName: string;
     indentureAddress: string;
@@ -49,45 +51,45 @@ export type FormData = {
 interface ClientFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (formData: FormData) => void;
-  onSaveAndPay: (formData: FormData) => void;
+  onSave: (formData: FormData, files?: { photo?: File | null, pdf?: File | null }) => void;
+  onSaveAndPay: (formData: FormData, files?: { photo?: File | null, pdf?: File | null }) => void;
   properties: Property[];
   editingClient?: Client | null;
 }
 
 const getFieldClass = (error?: string): string => {
-    const baseClass = "mt-1 block w-full px-3 py-2 bg-white border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm";
-    return error ? `${baseClass} border-red-500` : `${baseClass} border-gray-300`;
+    const baseClass = "mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-900 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-white";
+    return error ? `${baseClass} border-red-500 dark:border-red-600` : `${baseClass} border-gray-300 dark:border-gray-600`;
 };
 
-const SmartInputField: React.FC<{ id: keyof FormData; label: string; value: string | number; onChange: (e: ChangeEvent<HTMLInputElement>) => void; onBlur: (e: React.FocusEvent<HTMLInputElement>) => void; error?: string; type?: string; required?: boolean; list?: string; isTouched?: boolean; }> = ({ id, label, value, onChange, onBlur, error, type = 'text', required = false, list, isTouched }) => (
+const SmartInputField: React.FC<{ id: keyof FormData; label: string; value: string | number; onChange: (e: ChangeEvent<HTMLInputElement>) => void; onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void; error?: string; type?: string; required?: boolean; list?: string; isTouched?: boolean; }> = ({ id, label, value, onChange, onBlur, error, type = 'text', required = false, list, isTouched }) => (
     <div className="sm:col-span-1 relative">
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500">*</span>}</label>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}{required && <span className="text-red-500">*</span>}</label>
         <input type={type} name={id} id={id} value={value} onChange={onChange} onBlur={onBlur} required={required} list={list} className={getFieldClass(error)} title={error || ''} />
         {isTouched && !error && required && (
             <CheckCircleIcon className="absolute right-3 top-[37px] w-5 h-5 text-green-500 pointer-events-none" />
         )}
-        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
 );
 
-const SmartSelectField: React.FC<{ id: keyof FormData; label: string; value: string; onChange: (e: ChangeEvent<HTMLSelectElement>) => void; onBlur: (e: React.FocusEvent<HTMLSelectElement>) => void; children: React.ReactNode; error?: string; required?: boolean; isTouched?: boolean; }> = ({ id, label, value, onChange, onBlur, children, error, required = false, isTouched }) => (
+const SmartSelectField: React.FC<{ id: keyof FormData; label: string; value: string; onChange: (e: ChangeEvent<HTMLSelectElement>) => void; onBlur?: (e: React.FocusEvent<HTMLSelectElement>) => void; children: React.ReactNode; error?: string; required?: boolean; isTouched?: boolean; }> = ({ id, label, value, onChange, onBlur, children, error, required = false, isTouched }) => (
      <div className="sm:col-span-1 relative">
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500">*</span>}</label>
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}{required && <span className="text-red-500">*</span>}</label>
         <select id={id} name={id} value={value} onChange={onChange} onBlur={onBlur} required={required} className={getFieldClass(error)} title={error || ''}>
             {children}
         </select>
         {isTouched && !error && required && (
             <CheckCircleIcon className="absolute right-8 top-[37px] w-5 h-5 text-green-500 pointer-events-none" />
         )}
-        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
 );
 
 
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div className="mt-6 pt-6 border-t">
-        <h3 className="text-lg font-medium leading-6 text-gray-900">{title}</h3>
+    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{title}</h3>
         <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
             {children}
         </div>
@@ -134,6 +136,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [touched, setTouched] = useState<Partial<Record<keyof FormData, boolean>>>({});
 
      useEffect(() => {
@@ -141,17 +144,17 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
             setFormData({
                 surname: editingClient.surname,
                 otherNames: editingClient.otherNames,
-                dateOfBirth: '', // Assuming not stored, can be added to type
-                currentAddress: editingClient.location, // Best guess
+                dateOfBirth: editingClient.dateOfBirth || '',
+                currentAddress: editingClient.location, // Assuming this is current addr for now
                 telephone: editingClient.phone,
                 email: editingClient.email,
-                gender: 'Other', // Assuming not stored
+                gender: editingClient.gender || 'Other',
                 photo: editingClient.photo || '',
-                placeOfWork: '', // Assuming not stored
-                profession: '', // Assuming not stored
-                position: '', // Assuming not stored
+                placeOfWork: editingClient.professionalDetails?.placeOfWork || '',
+                profession: editingClient.professionalDetails?.profession || '',
+                position: editingClient.professionalDetails?.position || '',
                 kinName: editingClient.nextOfKin.name,
-                kinAddress: '', // Assuming not stored
+                kinAddress: editingClient.nextOfKin.address || '',
                 kinPhone: editingClient.nextOfKin.phone,
                 kinRelationship: editingClient.nextOfKin.relationship,
                 kinEmail: editingClient.nextOfKin.email || '',
@@ -161,9 +164,9 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                 paymentDate: editingClient.regDate,
                 paymentMethod: editingClient.payment.paymentHistory[0]?.method || 'Bank Transfer',
                 location: editingClient.location,
-                propertyType: 'Residential', // Assuming not stored
+                propertyType: editingClient.propertyType || 'Residential',
                 plotNumber: editingClient.plot,
-                plannedDevelopmentYear: new Date().getFullYear().toString(),
+                plannedDevelopmentYear: editingClient.plannedDevelopmentYear || new Date().getFullYear().toString(),
                 filledFormPdf: editingClient.filledFormPdf,
                 indentureName: editingClient.indenture.name,
                 indentureAddress: editingClient.indenture.address,
@@ -211,8 +214,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
 
         const phoneFields: (keyof FormData)[] = ['telephone', 'kinPhone', 'witnessPhone'];
         phoneFields.forEach(field => {
-            if (formData[field] && !/^\d{9,10}$/.test(formData[field])) {
-                errors[field] = 'Please enter a valid 9 or 10-digit phone number.';
+            if (formData[field] && formData[field].length < 10) {
+                errors[field] = 'Please provide a valid phone number with country code.';
             }
         });
 
@@ -220,9 +223,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
             errors.plotNumber = 'Plot number must follow a format like ELH-101.';
         }
 
-        if (!formData.filledFormPdf && !editingClient?.filledFormPdf) errors.filledFormPdf = 'PDF form upload is required.';
         return errors;
-    }, [formData, editingClient]);
+    }, [formData]);
 
     const errors = useMemo(() => validate(), [validate]);
     const isFormValid = Object.keys(errors).length === 0;
@@ -237,16 +239,19 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handlePhoneChange = (fieldName: keyof FormData) => (value: string) => {
+        setFormData(prev => ({ ...prev, [fieldName]: value }));
+    };
+
     const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
             if (allowedTypes.includes(file.type)) {
+                setPhotoFile(file);
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                    const base64String = reader.result as string;
-                    setFormData(prev => ({ ...prev, photo: base64String }));
-                    setPhotoPreview(base64String);
+                    setPhotoPreview(reader.result as string);
                 };
                 reader.readAsDataURL(file);
             } else {
@@ -261,13 +266,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
             const file = e.target.files[0];
             if (file.type === 'application/pdf') {
                 setPdfFile(file);
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64String = reader.result as string;
-                    setFormData(prev => ({ ...prev, filledFormPdf: base64String }));
-                };
-                reader.readAsDataURL(file);
-                 setTouched(prev => ({ ...prev, filledFormPdf: true }));
+                setTouched(prev => ({ ...prev, filledFormPdf: true }));
             } else {
                 alert('Please upload a PDF file.');
                 e.target.value = '';
@@ -276,7 +275,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
     };
 
     const step1Fields: (keyof FormData)[] = ['surname', 'otherNames', 'currentAddress', 'telephone', 'kinName', 'kinPhone', 'witnessName', 'witnessPhone', 'witnessAddress'];
-    const step2Fields: (keyof FormData)[] = ['location', 'plotNumber', 'paymentDate', 'filledFormPdf', 'indentureName', 'indentureAddress'];
+    const step2Fields: (keyof FormData)[] = ['location', 'plotNumber', 'paymentDate', 'indentureName', 'indentureAddress'];
 
     const handleNext = () => {
         const currentStepFields = step === 1 ? step1Fields : step2Fields;
@@ -308,7 +307,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
             alert("Some fields contain invalid or incomplete data. Please correct them before saving.");
             return;
         }
-        onSave(formData);
+        onSave(formData, { photo: photoFile, pdf: pdfFile });
         resetForm();
     };
 
@@ -321,7 +320,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
             alert("Some fields contain invalid or incomplete data. Please correct them before saving.");
             return;
         }
-        onSaveAndPay(formData);
+        onSaveAndPay(formData, { photo: photoFile, pdf: pdfFile });
         resetForm();
     };
 
@@ -329,6 +328,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
         setFormData(initialFormData);
         setPhotoPreview(null);
         setPdfFile(null);
+        setPhotoFile(null);
         setStep(1);
         setTouched({});
     };
@@ -343,15 +343,15 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog">
-            <div className="bg-gray-50 rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col transform transition-all">
-                <div className="flex justify-between items-center p-5 border-b bg-white rounded-t-lg">
-                    <h2 className="text-xl font-bold text-gray-800">{editingClient ? 'Edit Client Details' : 'New Client Registration'}</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col transform transition-all">
+                <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-lg">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">{editingClient ? 'Edit Client Details' : 'New Client Registration'}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                         <XIcon className="w-6 h-6" />
                     </button>
                 </div>
 
-                <div className="p-6 border-b">
+                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <nav aria-label="Progress">
                          <ol role="list" className="flex items-center">
                             {steps.map((s, stepIdx) => (
@@ -368,23 +368,23 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                                     ) : step === stepIdx + 1 ? (
                                         <>
                                         <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                            <div className="h-0.5 w-full bg-gray-200" />
+                                            <div className="h-0.5 w-full bg-gray-200 dark:bg-gray-700" />
                                         </div>
-                                        <div className="relative w-8 h-8 flex items-center justify-center bg-white border-2 border-blue-600 rounded-full text-blue-600">
+                                        <div className="relative w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border-2 border-blue-600 rounded-full text-blue-600">
                                            {s.icon}
                                         </div>
                                         </>
                                     ) : (
                                         <>
                                         <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                            <div className="h-0.5 w-full bg-gray-200" />
+                                            <div className="h-0.5 w-full bg-gray-200 dark:bg-gray-700" />
                                         </div>
-                                        <div className="relative w-8 h-8 flex items-center justify-center bg-white border-2 border-gray-300 rounded-full text-gray-400">
+                                        <div className="relative w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full text-gray-400">
                                             {s.icon}
                                         </div>
                                         </>
                                     )}
-                                     <span className="absolute -bottom-6 text-xs font-semibold text-center w-24 -left-8">{s.name}</span>
+                                     <span className="absolute -bottom-6 text-xs font-semibold text-center w-24 -left-8 text-gray-600 dark:text-gray-400">{s.name}</span>
                                 </li>
                             ))}
                         </ol>
@@ -396,7 +396,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                         <div>
                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div className="sm:col-span-2">
-                                    <h3 className="text-lg font-medium leading-6 text-gray-900">Personal Information</h3>
+                                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Personal Information</h3>
                                     <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
                                         <SmartInputField id="surname" label="Surname" value={formData.surname} onChange={handleChange} onBlur={handleBlur} required error={touched.surname ? errors.surname : undefined} isTouched={touched.surname} />
                                         <SmartInputField id="otherNames" label="Other Names" value={formData.otherNames} onChange={handleChange} onBlur={handleBlur} required error={touched.otherNames ? errors.otherNames : undefined} isTouched={touched.otherNames}/>
@@ -409,27 +409,27 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                                         <div className="sm:col-span-2">
                                             <SmartInputField id="currentAddress" label="Current Address" value={formData.currentAddress} onChange={handleChange} onBlur={handleBlur} required error={touched.currentAddress ? errors.currentAddress : undefined} isTouched={touched.currentAddress} />
                                         </div>
-                                        <SmartInputField id="telephone" label="Telephone" type="tel" value={formData.telephone} onChange={handleChange} onBlur={handleBlur} required error={touched.telephone ? errors.telephone : undefined} isTouched={touched.telephone} />
-                                        <SmartInputField id="email" label="Email Address" type="email" value={formData.email} onChange={handleChange} onBlur={handleBlur} error={touched.email ? errors.email : undefined} isTouched={touched.email} />
+                                        <PhoneInput id="telephone" name="telephone" label="Telephone" value={formData.telephone} onChange={handlePhoneChange('telephone')} required error={touched.telephone ? errors.telephone : undefined} />
+                                        <EmailInput id="email" name="email" label="Email Address" value={formData.email} onChange={(val) => setFormData(prev => ({...prev, email: val}))} error={touched.email ? errors.email : undefined} />
                                     </div>
                                 </div>
                                 <div className="sm:col-span-1">
-                                    <label className="block text-sm font-medium text-gray-700">Passport-sized Photo</label>
-                                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Passport-sized Photo</label>
+                                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md">
                                         <div className="space-y-1 text-center">
                                             {photoPreview ? (
                                                 <img src={photoPreview} alt="Client" className="mx-auto h-24 w-24 object-cover rounded-md" />
                                             ) : (
                                                 <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
                                             )}
-                                            <div className="flex text-sm text-gray-600">
-                                                <label htmlFor="photo-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                                    <span>Upload a file</span>
+                                            <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                                                <label htmlFor="photo-upload" className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                                    <span>{photoFile ? 'Change photo' : 'Upload a file'}</span>
                                                     <input id="photo-upload" name="photo" type="file" className="sr-only" onChange={handlePhotoChange} accept=".jpg,.jpeg,.png" />
                                                 </label>
                                                 <p className="pl-1">or drag and drop</p>
                                             </div>
-                                            <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 10MB</p>
                                         </div>
                                     </div>
                                 </div>
@@ -444,8 +444,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                            <FormSection title="Next of Kin Details">
                                <SmartInputField id="kinName" label="Name" value={formData.kinName} onChange={handleChange} onBlur={handleBlur} required error={touched.kinName ? errors.kinName : undefined} isTouched={touched.kinName}/>
                                <SmartInputField id="kinRelationship" label="Relationship with Buyer" value={formData.kinRelationship} onChange={handleChange} onBlur={handleBlur} error={touched.kinRelationship ? errors.kinRelationship : undefined} isTouched={touched.kinRelationship}/>
-                               <SmartInputField id="kinPhone" label="Telephone Number" type="tel" value={formData.kinPhone} onChange={handleChange} onBlur={handleBlur} required error={touched.kinPhone ? errors.kinPhone : undefined} isTouched={touched.kinPhone}/>
-                               <SmartInputField id="kinEmail" label="Email Address" type="email" value={formData.kinEmail} onChange={handleChange} onBlur={handleBlur} error={touched.kinEmail ? errors.kinEmail : undefined} isTouched={touched.kinEmail}/>
+                               <PhoneInput id="kinPhone" name="kinPhone" label="Telephone Number" value={formData.kinPhone} onChange={handlePhoneChange('kinPhone')} required error={touched.kinPhone ? errors.kinPhone : undefined} />
+                               <EmailInput id="kinEmail" name="kinEmail" label="Email Address" value={formData.kinEmail} onChange={(val) => setFormData(prev => ({...prev, kinEmail: val}))} error={touched.kinEmail ? errors.kinEmail : undefined} />
                                <div className="sm:col-span-2">
                                     <SmartInputField id="kinAddress" label="Address" value={formData.kinAddress} onChange={handleChange} onBlur={handleBlur} error={touched.kinAddress ? errors.kinAddress : undefined} isTouched={touched.kinAddress}/>
                                </div>
@@ -453,7 +453,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
 
                            <FormSection title="Witness Details">
                                <SmartInputField id="witnessName" label="Name" value={formData.witnessName} onChange={handleChange} onBlur={handleBlur} required error={touched.witnessName ? errors.witnessName : undefined} isTouched={touched.witnessName}/>
-                               <SmartInputField id="witnessPhone" label="Telephone Number" type="tel" value={formData.witnessPhone} onChange={handleChange} onBlur={handleBlur} required error={touched.witnessPhone ? errors.witnessPhone : undefined} isTouched={touched.witnessPhone}/>
+                               <PhoneInput id="witnessPhone" name="witnessPhone" label="Telephone Number" value={formData.witnessPhone} onChange={handlePhoneChange('witnessPhone')} required error={touched.witnessPhone ? errors.witnessPhone : undefined} />
                                <div className="sm:col-span-2">
                                 <SmartInputField id="witnessAddress" label="Address" value={formData.witnessAddress} onChange={handleChange} onBlur={handleBlur} required error={touched.witnessAddress ? errors.witnessAddress : undefined} isTouched={touched.witnessAddress}/>
                                </div>
@@ -481,16 +481,16 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                                     <option>Cheque</option>
                                     <option>Other</option>
                                 </SmartSelectField>
-                                <div className={`sm:col-span-2 p-3 rounded-md border relative ${touched.filledFormPdf && errors.filledFormPdf ? 'border-red-500' : 'border-gray-200 bg-gray-50'}`}>
-                                    <label htmlFor="filledFormPdf" className="block text-sm font-medium text-gray-700">Upload Filled Client Form <span className="text-red-500">*</span></label>
+                                <div className={`sm:col-span-2 p-3 rounded-md border relative ${touched.filledFormPdf && errors.filledFormPdf ? 'border-red-500 dark:border-red-600' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
+                                    <label htmlFor="filledFormPdf" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Filled Client Form <span className="text-gray-400 text-xs">(Optional)</span></label>
                                     <div className="mt-1 flex items-center">
-                                        <label htmlFor="filledFormPdf-upload" className="relative cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                            <span>{pdfFile?.name || (formData.filledFormPdf ? 'File uploaded' : 'Select file')}</span>
+                                        <label htmlFor="filledFormPdf-upload" className="relative cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                            <span>{pdfFile ? pdfFile.name : (formData.filledFormPdf ? 'File uploaded' : 'Select file')}</span>
                                             <input id="filledFormPdf-upload" name="filledFormPdf" type="file" className="sr-only" onChange={handlePdfChange} accept="application/pdf" />
                                         </label>
                                         {(pdfFile || formData.filledFormPdf) && <span className="ml-3 text-sm text-green-600">✔ PDF selected</span>}
                                     </div>
-                                    {touched.filledFormPdf && errors.filledFormPdf && <p className="mt-1 text-xs text-red-600">{errors.filledFormPdf}</p>}
+                                    {touched.filledFormPdf && errors.filledFormPdf && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.filledFormPdf}</p>}
                                     {touched.filledFormPdf && !errors.filledFormPdf && (
                                         <CheckCircleIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500 pointer-events-none" />
                                     )}
@@ -515,10 +515,10 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                     )}
                 </form>
 
-                <div className="flex justify-between items-center p-5 border-t bg-white rounded-b-lg">
+                <div className="flex justify-between items-center p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg">
                     <div>
                         {step > 1 && (
-                            <button type="button" onClick={handleBack} className="bg-white text-gray-700 font-semibold py-2 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+                            <button type="button" onClick={handleBack} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                                 Back
                             </button>
                         )}

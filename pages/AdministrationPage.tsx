@@ -1,5 +1,7 @@
+
 import React from 'react';
 import { MapIcon, UserCheckIcon, MapPinIcon, FolderIcon, BriefcaseIcon } from '../components/icons/DummyIcons';
+import { Card } from '../components/ui/Card';
 
 interface AdministrationPageProps {
     setActivePage: (page: string) => void;
@@ -11,21 +13,21 @@ const AdminCard: React.FC<{
     description: string;
     onClick: () => void;
 }> = ({ icon, title, description, onClick }) => (
-    <button
+    <Card 
         onClick={onClick}
-        className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 text-left hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+        className="cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
     >
         <div className="flex items-start justify-between">
             {/* FIX: Cast style object to React.CSSProperties to allow CSS custom properties. */}
-            <div className="p-3 rounded-full bg-blue-100 text-blue-600 group-hover:bg-amber-100 group-hover:text-amber-600 transition-colors" style={{ '--tw-bg-opacity': '0.8' } as React.CSSProperties}>
+            <div className="p-3 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/30 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors" style={{ '--tw-bg-opacity': '0.8' } as React.CSSProperties}>
                 {icon}
             </div>
         </div>
         <div className="mt-4">
-            <h3 className="text-xl font-bold text-gray-800" style={{ color: '#0047AB' }}>{title}</h3>
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white">{title}</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
         </div>
-    </button>
+    </Card>
 );
 
 const AdministrationPage: React.FC<AdministrationPageProps> = ({ setActivePage }) => {
@@ -66,8 +68,8 @@ const AdministrationPage: React.FC<AdministrationPageProps> = ({ setActivePage }
     return (
         <div className="space-y-6 animate-fade-in">
             <div>
-                <h1 className="text-3xl font-bold text-gray-800">Administration Dashboard</h1>
-                <p className="text-gray-500 mt-1">Manage estate layouts, plot allocations, client documents, and mapping activities.</p>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Administration Dashboard</h1>
+                <p className="text-gray-500 dark:text-gray-400 mt-1">Manage estate layouts, plot allocations, client documents, and mapping activities.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

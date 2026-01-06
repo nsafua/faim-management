@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Interaction } from '../types';
 import { PhoneIcon, EnvelopeIcon, UserGroupIcon, PencilSquareIcon, DocumentDuplicateIcon } from './icons/DummyIcons';
@@ -24,9 +25,9 @@ const interactionColors: Record<Interaction['type'], string> = {
 
 const InteractionHistory: React.FC<InteractionHistoryProps> = ({ interactions }) => {
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Interaction History</h3>
-            <div className="relative pl-6 border-l-2 border-gray-200">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Interaction History</h3>
+            <div className="relative pl-6 border-l-2 border-gray-200 dark:border-gray-700">
                 {interactions.map((item, index) => (
                     <div key={item.id} className="mb-8 relative">
                          <div className={`absolute -left-[23px] top-1 w-10 h-10 rounded-full flex items-center justify-center ${interactionColors[item.type]}`}>
@@ -34,17 +35,17 @@ const InteractionHistory: React.FC<InteractionHistoryProps> = ({ interactions })
                         </div>
                         <div className="ml-8">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm font-semibold text-gray-800">
-                                    {item.type} with <span className="text-blue-600">{item.agent}</span>
+                                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                    {item.type} with <span className="text-blue-600 dark:text-blue-400">{item.agent}</span>
                                 </p>
                                 <p className="text-xs text-gray-400">{new Date(item.date).toLocaleString()}</p>
                             </div>
-                            <p className="mt-1 text-sm text-gray-600">{item.notes}</p>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{item.notes}</p>
                         </div>
                     </div>
                 ))}
                  {interactions.length === 0 && (
-                    <p className="text-sm text-gray-500">No interaction history recorded.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No interaction history recorded.</p>
                 )}
             </div>
         </div>

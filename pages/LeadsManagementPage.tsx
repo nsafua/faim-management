@@ -1,7 +1,6 @@
 
-
-import React, { useState, useMemo, ChangeEvent, FormEvent } from 'react';
-import { Lead, Client, Staff, Property, Milestone, LeadComment, ActivityLog } from '../types';
+import React, { useState, useMemo, ChangeEvent, FormEvent, useEffect } from 'react';
+import { Lead, Client, Staff, Property, Milestone, LeadComment, ActivityLog, Role } from '../types';
 import { 
     MagnifyingGlassIcon, 
     PlusCircleIcon, 
@@ -12,9 +11,14 @@ import {
     ChatBubbleLeftEllipsisIcon,
     UploadIcon
 } from '../components/icons/DummyIcons';
+import { LoaderIcon } from '../components/icons/LoaderIcon';
 import { XIcon } from '../components/icons/XIcon';
 import LeadForm from '../components/LeadForm';
 import CSVImportWizard from '../components/CSVImportWizard';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
+import { useLeads } from '../hooks/useAppData';
 
 // --- START: In-file Components for LeadsManagementPage ---
 
@@ -27,13 +31,13 @@ const KANBAN_STAGES: Lead['status'][] = [
     'Converted to Client',
 ];
 
-const STAGE_COLORS: Record<Lead['status'], { bg: string; text: string; border: string }> = {
-    'Contacted': { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-400' },
-    'Visited Site': { bg: 'bg-yellow-50', text: 'text-yellow-800', border: 'border-yellow-400' },
-    'Filled a Form': { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-400' },
-    'Submitted the Form': { bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-400' },
-    'Made Payment': { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-400' },
-    'Converted to Client': { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400' },
+const STAGE_COLORS: Record<Lead['status'], { bg: string; text: string; border: string; darkBg: string; darkText: string; darkBorder: string }> = {
+    'Contacted': { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-400', darkBg: 'dark:bg-blue-900/30', darkText: 'dark:text-blue-300', darkBorder: 'dark:border-blue-700' },
+    'Visited Site': { bg: 'bg-yellow-50', text: 'text-yellow-800', border: 'border-yellow-400', darkBg: 'dark:bg-yellow-900/30', darkText: 'dark:text-yellow-300', darkBorder: 'dark:border-yellow-700' },
+    'Filled a Form': { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-400', darkBg: 'dark:bg-purple-900/30', darkText: 'dark:text-purple-300', darkBorder: 'dark:border-purple-700' },
+    'Submitted the Form': { bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-400', darkBg: 'dark:bg-indigo-900/30', darkText: 'dark:text-indigo-300', darkBorder: 'dark:border-indigo-700' },
+    'Made Payment': { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-400', darkBg: 'dark:bg-pink-900/30', darkText: 'dark:text-pink-300', darkBorder: 'dark:border-pink-700' },
+    'Converted to Client': { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400', darkBg: 'dark:bg-green-900/30', darkText: 'dark:text-green-300', darkBorder: 'dark:border-green-700' },
 };
 
 // Comment Modal Component
@@ -56,35 +60,35 @@ const CommentModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-lg font-bold text-gray-800">Conversation History for {lead.fullName}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XIcon /></button>
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-white">Conversation History for {lead.fullName}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><XIcon /></button>
                 </div>
                 <div className="p-4 overflow-y-auto flex-grow space-y-4">
                     {lead.comments.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-8">No comments yet.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No comments yet.</p>
                     ) : (
                         lead.comments.slice().reverse().map(comment => (
                             <div key={comment.id} className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 flex items-center justify-center font-bold text-sm flex-shrink-0">
                                     {staffList.find(u => u.id === comment.authorId)?.initials || '??'}
                                 </div>
-                                <div className="bg-gray-100 p-3 rounded-lg flex-grow">
+                                <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg flex-grow">
                                     <div className="flex justify-between items-center">
-                                        <p className="font-semibold text-sm text-gray-900">{staffList.find(u => u.id === comment.authorId)?.fullName || 'Unknown'}</p>
-                                        <p className="text-xs text-gray-500">{new Date(comment.date).toLocaleString()}</p>
+                                        <p className="font-semibold text-sm text-gray-900 dark:text-white">{staffList.find(u => u.id === comment.authorId)?.fullName || 'Unknown'}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(comment.date).toLocaleString()}</p>
                                     </div>
-                                    <p className="text-sm text-gray-700 mt-1">{comment.text}</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">{comment.text}</p>
                                 </div>
                             </div>
                         ))
                     )}
                 </div>
-                <div className="p-4 border-t flex items-start gap-3">
-                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Add a new comment..." rows={2} className="w-full text-sm p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
-                    <button onClick={handleAddComment} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">Save</button>
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-start gap-3 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                    <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Add a new comment..." rows={2} className="w-full text-sm p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    <button onClick={handleAddComment} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Save</button>
                 </div>
             </div>
         </div>
@@ -98,20 +102,20 @@ const KanbanCard: React.FC<{
     onDragStart: (e: React.DragEvent<HTMLDivElement>, leadId: number) => void;
     onClick: (lead: Lead) => void;
 }> = ({ lead, assignedRep, onDragStart, onClick }) => {
-    const { bg, text } = STAGE_COLORS[lead.status];
+    const { bg, text, darkBg, darkText } = STAGE_COLORS[lead.status];
     return (
         <div 
             draggable 
             onDragStart={(e) => onDragStart(e, lead.id)}
             onClick={() => onClick(lead)}
-            className={`p-3 rounded-lg shadow-sm border bg-white cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all mb-3`}
+            className={`p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all mb-3`}
         >
-            <div className={`text-xs font-semibold px-2 py-0.5 rounded-full inline-block mb-2 ${bg} ${text}`}>{lead.status}</div>
-            <p className="font-bold text-gray-800">{lead.fullName}</p>
-            <p className="text-xs text-gray-500">{lead.phone} | {lead.source}</p>
+            <div className={`text-xs font-semibold px-2 py-0.5 rounded-full inline-block mb-2 ${bg} ${text} ${darkBg} ${darkText}`}>{lead.status}</div>
+            <p className="font-bold text-gray-800 dark:text-white">{lead.fullName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{lead.phone} | {lead.source}</p>
             <div className="flex justify-between items-center mt-3">
-                <p className="text-xs text-gray-500">Last update: {new Date(lead.lastContactDate).toLocaleDateString()}</p>
-                <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-xs" title={assignedRep?.fullName}>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Last update: {new Date(lead.lastContactDate).toLocaleDateString()}</p>
+                <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center font-bold text-xs" title={assignedRep?.fullName}>
                     {assignedRep?.initials || '??'}
                 </div>
             </div>
@@ -122,38 +126,45 @@ const KanbanCard: React.FC<{
 // --- END: In-file Components ---
 
 interface LeadsManagementPageProps {
-    leads: Lead[];
+    // leads prop removed as data is fetched via hook
     onSaveLead: (lead: Lead) => Promise<void>;
     onDeleteLead: (leadId: number) => Promise<void>;
     clients: Client[];
     onSaveClient: (client: Client) => Promise<Client>;
     staffList: Staff[];
+    roles: Role[];
     properties: Property[];
     milestones: Milestone[];
     currentStaff: Staff;
     addActivityLog: (type: ActivityLog['type'], description: string) => void;
 }
 
-const LeadsManagementPage: React.FC<LeadsManagementPageProps> = ({ leads, onSaveLead, onDeleteLead, clients, onSaveClient, staffList, milestones, currentStaff, addActivityLog }) => {
+const LeadsManagementPage: React.FC<LeadsManagementPageProps> = ({ onSaveLead, onDeleteLead, clients, onSaveClient, staffList, roles, milestones, currentStaff, addActivityLog }) => {
     const [activeTab, setActiveTab] = useState<'board' | 'list'>('board');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportWizardOpen, setImportWizardOpen] = useState(false);
     const [editingLead, setEditingLead] = useState<Lead | null>(null);
+    
+    // Search State
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+    // Fetch data via hook
+    const { leads, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useLeads(debouncedSearchTerm);
+
     const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
     const [commentingLead, setCommentingLead] = useState<Lead | null>(null);
+    const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
 
-    const salesReps = useMemo(() => staffList.filter(u => ['Head of Sales', 'Sales Representative'].includes(staffList.find(r => r.id === u.roleId)?.fullName || '')), [staffList]);
+    const salesReps = useMemo(() => staffList.filter(u => ['Head of Sales', 'Sales Representative'].includes(roles.find(r => r.id === u.roleId)?.name || '')), [staffList, roles]);
 
-    const filteredLeads = useMemo(() => {
-        if (!searchTerm) return leads;
-        const lowercasedTerm = searchTerm.toLowerCase();
-        return leads.filter(lead =>
-            lead.fullName.toLowerCase().includes(lowercasedTerm) ||
-            lead.email.toLowerCase().includes(lowercasedTerm) ||
-            lead.phone.includes(lowercasedTerm)
-        );
-    }, [leads, searchTerm]);
+    // Debounce Effect
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
 
     const handleOpenModal = (lead: Lead | null = null) => {
         setEditingLead(lead);
@@ -186,14 +197,18 @@ const LeadsManagementPage: React.FC<LeadsManagementPageProps> = ({ leads, onSave
         handleCloseModal();
     };
     
-    const handleDeleteLead = (id: number) => {
-        const leadToDelete = leads.find(l => l.id === id);
-        // Let parent handle confirmation.
-        onDeleteLead(id);
-        // The log will be created even if the user cancels the confirmation dialog. This is a pre-existing design issue.
-        // The main bug is that the component was not calling the persistence layer at all. Fixing that is the priority.
+    const handleDeleteClick = (id: number) => {
+        const lead = leads.find(l => l.id === id);
+        if (lead) {
+            setLeadToDelete(lead);
+        }
+    };
+
+    const confirmDeleteLead = async () => {
         if (leadToDelete) {
+            await onDeleteLead(leadToDelete.id);
             addActivityLog('Delete', `Deleted lead: ${leadToDelete.fullName}.`);
+            setLeadToDelete(null);
         }
     };
 
@@ -279,7 +294,7 @@ const LeadsManagementPage: React.FC<LeadsManagementPageProps> = ({ leads, onSave
               phone: data.phone || '',
               source: data.source || 'Other',
               status: 'Contacted',
-              assignedRepId: salesReps[0]?.id || 0,
+              assignedRepId: salesReps[0]?.id || '',
               nextFollowUpDate: '',
               lastContactDate: currentDate,
               notes: 'Imported via CSV.',
@@ -292,96 +307,152 @@ const LeadsManagementPage: React.FC<LeadsManagementPageProps> = ({ leads, onSave
       addActivityLog('Import', `Imported ${newLeads.length} new leads from a CSV file.`);
     };
 
+    // Virtual List Row Renderer
+    const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+        const lead = leads[index];
+        const isOdd = index % 2 !== 0;
+        
+        return (
+            <div style={style} className={`flex items-center text-sm border-b dark:border-gray-700 ${isOdd ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700/30'} hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors`}>
+                <div className="flex-1 px-4 py-2 font-medium text-gray-900 dark:text-white truncate">
+                    <div>{lead.fullName}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{lead.email} | {lead.phone}</div>
+                </div>
+                <div className="w-32 px-4 py-2 text-gray-600 dark:text-gray-300 truncate hidden md:block">{lead.source}</div>
+                <div className="w-40 px-4 py-2 text-gray-600 dark:text-gray-300 truncate hidden md:block">{staffList.find(r => r.id === lead.assignedRepId)?.fullName || 'Unassigned'}</div>
+                <div className="w-32 px-4 py-2 text-gray-600 dark:text-gray-300 hidden lg:block">{new Date(lead.lastContactDate).toLocaleDateString()}</div>
+                <div className="w-40 px-4 py-2 text-center">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STAGE_COLORS[lead.status].bg} ${STAGE_COLORS[lead.status].text} ${STAGE_COLORS[lead.status].darkBg} ${STAGE_COLORS[lead.status].darkText}`}>
+                        {lead.status}
+                    </span>
+                </div>
+                <div className="w-40 px-4 py-2 flex justify-center gap-2">
+                    {lead.status !== 'Converted to Client' && 
+                        <button onClick={() => handleConvertLead(lead)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 p-1" title="Convert to Client"><ArrowRightOnRectangleIcon className="w-5 h-5"/></button>
+                    }
+                    <button onClick={() => setCommentingLead(lead)} className="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 p-1" title="View Comments"><ChatBubbleLeftEllipsisIcon className="w-5 h-5"/></button>
+                    <button onClick={() => handleOpenModal(lead)} className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 p-1" title="Edit Lead"><PencilIcon className="w-5 h-5"/></button>
+                    <button onClick={() => handleDeleteClick(lead.id)} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 p-1" title="Delete Lead"><TrashIcon className="w-5 h-5"/></button>
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Lead Management & Follow-Up</h1>
-                    <p className="text-gray-500 mt-1">Visually track lead progress and manage conversions.</p>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Lead Management & Follow-Up</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Visually track lead progress and manage conversions.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <button onClick={() => setImportWizardOpen(true)} className="bg-white text-gray-700 font-semibold py-2 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 flex items-center gap-2">
+                    <button onClick={() => setImportWizardOpen(true)} className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
                         <UploadIcon className="w-5 h-5" /> Import Leads
                     </button>
-                    <button onClick={() => handleOpenModal()} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                    <button onClick={() => handleOpenModal()} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors">
                         <PlusCircleIcon className="w-5 h-5" /> Add New Lead
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-wrap gap-4 justify-between items-center">
-                <div className="flex border-b border-gray-200">
-                    <button onClick={() => setActiveTab('board')} className={`px-4 py-2 font-semibold ${activeTab === 'board' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Follow-Up Board</button>
-                    <button onClick={() => setActiveTab('list')} className={`px-4 py-2 font-semibold ${activeTab === 'list' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Lead List</button>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-wrap gap-4 justify-between items-center transition-colors flex-shrink-0">
+                <div className="flex border-b border-gray-200 dark:border-gray-700">
+                    <button onClick={() => setActiveTab('board')} className={`px-4 py-2 font-semibold transition-colors ${activeTab === 'board' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>Follow-Up Board</button>
+                    <button onClick={() => setActiveTab('list')} className={`px-4 py-2 font-semibold transition-colors ${activeTab === 'list' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>Lead List</button>
                 </div>
                  <div className="relative flex-grow sm:flex-grow-0 sm:w-80">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input type="text" placeholder="Search leads..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-gray-50 border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500">
+                        {isLoading ? <LoaderIcon className="animate-spin" /> : <MagnifyingGlassIcon />}
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="Search leads..." 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        className="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg pl-10 pr-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400" 
+                    />
                 </div>
             </div>
 
             {activeTab === 'board' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-start">
-                    {KANBAN_STAGES.map(stage => (
-                        <div key={stage} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, stage)} className="bg-gray-100 p-3 rounded-lg min-h-[200px]">
-                            <h3 className={`font-semibold mb-3 pb-2 border-b-2 ${STAGE_COLORS[stage].border} ${STAGE_COLORS[stage].text}`}>
-                                {stage} ({filteredLeads.filter(l => l.status === stage).length})
-                            </h3>
-                            <div className="space-y-3">
-                                {filteredLeads.filter(l => l.status === stage).map(lead => (
-                                    <KanbanCard 
-                                        key={lead.id} 
-                                        lead={lead} 
-                                        assignedRep={staffList.find(u => u.id === lead.assignedRepId)}
-                                        onDragStart={handleDragStart}
-                                        onClick={setCommentingLead}
-                                    />
-                                ))}
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-start overflow-y-auto flex-grow p-1">
+                        {KANBAN_STAGES.map(stage => (
+                            <div key={stage} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, stage)} className="bg-gray-100 dark:bg-gray-900/50 p-3 rounded-lg min-h-[200px] border border-gray-200 dark:border-gray-700 flex flex-col">
+                                <h3 className={`font-semibold mb-3 pb-2 border-b-2 ${STAGE_COLORS[stage].border} ${STAGE_COLORS[stage].darkBorder} ${STAGE_COLORS[stage].text} ${STAGE_COLORS[stage].darkText}`}>
+                                    {stage} ({leads.filter(l => l.status === stage).length})
+                                </h3>
+                                <div className="space-y-3 flex-grow">
+                                    {leads.filter(l => l.status === stage).map(lead => (
+                                        <KanbanCard 
+                                            key={lead.id} 
+                                            lead={lead} 
+                                            assignedRep={staffList.find(u => u.id === lead.assignedRepId)}
+                                            onDragStart={handleDragStart}
+                                            onClick={setCommentingLead}
+                                        />
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                    <div className="text-center py-2">
+                        {hasNextPage && !searchTerm && (
+                            <button 
+                                onClick={() => fetchNextPage()} 
+                                disabled={isFetchingNextPage} 
+                                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold"
+                            >
+                                {isFetchingNextPage ? 'Loading more...' : 'Load more leads to board'}
+                            </button>
+                        )}
+                    </div>
+                </>
             )}
 
             {activeTab === 'list' && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 text-xs text-gray-700 uppercase">
-                            <tr>
-                                <th className="px-6 py-3">Lead Name & Contact</th>
-                                <th className="px-6 py-3">Source</th>
-                                <th className="px-6 py-3">Assigned To</th>
-                                <th className="px-6 py-3">Last Contact</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredLeads.map(lead => (
-                                <tr key={lead.id} className="border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">
-                                        <div>{lead.fullName}</div>
-                                        <div className="text-xs text-gray-500">{lead.email} | {lead.phone}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{lead.source}</td>
-                                    <td className="px-6 py-4 text-gray-600">{staffList.find(r => r.id === lead.assignedRepId)?.fullName || 'Unassigned'}</td>
-                                    <td className="px-6 py-4 text-gray-600">{new Date(lead.lastContactDate).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${STAGE_COLORS[lead.status].bg} ${STAGE_COLORS[lead.status].text}`}>{lead.status}</span></td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            {lead.status !== 'Converted to Client' && 
-                                                <button onClick={() => handleConvertLead(lead)} className="text-green-600 hover:text-green-800 p-1" title="Convert to Client"><ArrowRightOnRectangleIcon className="w-5 h-5"/></button>
-                                            }
-                                            <button onClick={() => setCommentingLead(lead)} className="text-gray-500 hover:text-indigo-600 p-1" title="View Comments"><ChatBubbleLeftEllipsisIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => handleOpenModal(lead)} className="text-gray-500 hover:text-blue-600 p-1" title="Edit Lead"><PencilIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => handleDeleteLead(lead.id)} className="text-gray-500 hover:text-red-600 p-1" title="Delete Lead"><TrashIcon className="w-5 h-5"/></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {filteredLeads.length === 0 && <div className="text-center p-8 text-gray-500">No leads found.</div>}
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex-grow flex flex-col transition-colors overflow-hidden">
+                    {/* List Header */}
+                    <div className="flex bg-gray-50 dark:bg-gray-900 text-xs text-gray-700 dark:text-gray-300 uppercase font-bold border-b dark:border-gray-700">
+                        <div className="flex-1 px-4 py-3">Lead Name & Contact</div>
+                        <div className="w-32 px-4 py-3 hidden md:block">Source</div>
+                        <div className="w-40 px-4 py-3 hidden md:block">Assigned To</div>
+                        <div className="w-32 px-4 py-3 hidden lg:block">Last Contact</div>
+                        <div className="w-40 px-4 py-3 text-center">Status</div>
+                        <div className="w-40 px-4 py-3 text-center">Actions</div>
+                    </div>
+                    {/* Virtualized List Body */}
+                    <div className="flex-grow">
+                        <AutoSizer>
+                            {({ height, width }) => (
+                                <List
+                                    height={height}
+                                    itemCount={leads.length}
+                                    itemSize={80} // Fixed height for rows
+                                    width={width}
+                                >
+                                    {Row}
+                                </List>
+                            )}
+                        </AutoSizer>
+                        {leads.length === 0 && <div className="text-center p-8 text-gray-500 dark:text-gray-400">No leads found.</div>}
+                    </div>
+                    {/* Pagination Controls */}
+                    <div className="py-2 text-center border-t border-gray-200 dark:border-gray-700">
+                        {isLoading ? (
+                            <span className="text-gray-500 dark:text-gray-400 text-sm">Loading data...</span>
+                        ) : hasNextPage ? (
+                            <button 
+                                onClick={() => fetchNextPage()} 
+                                disabled={isFetchingNextPage}
+                                className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-semibold disabled:opacity-50"
+                            >
+                                {isFetchingNextPage ? 'Loading more...' : 'Load More Leads'}
+                            </button>
+                        ) : leads.length > 0 ? (
+                            <span className="text-gray-400 text-sm">All leads loaded</span>
+                        ) : null}
+                    </div>
                 </div>
             )}
 
@@ -395,6 +466,14 @@ const LeadsManagementPage: React.FC<LeadsManagementPageProps> = ({ leads, onSave
                 sampleHeaders="fullName,email,phone,source"
                 sampleData="John Doe,john.doe@example.com,0241234567,Referral\nJane Smith,jane.smith@example.com,0559876543,Facebook"
                 wizardTitle="Import Leads from CSV"
+            />
+            
+            <DeleteConfirmationModal 
+                isOpen={!!leadToDelete}
+                onClose={() => setLeadToDelete(null)}
+                onConfirm={confirmDeleteLead}
+                itemName={leadToDelete?.fullName || ''}
+                itemType="Lead"
             />
         </div>
     );

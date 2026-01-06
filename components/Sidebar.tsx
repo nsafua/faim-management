@@ -1,25 +1,26 @@
+
 import React, { useState } from 'react';
 import { XIcon } from './icons/XIcon';
 import { 
   HomeIcon, 
   UsersIcon, 
   Cog6ToothIcon, 
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  DocumentPlusIcon,
-  BriefcaseIcon,
-  UserGroupIcon,
-  InboxArrowDownIcon,
-  CalendarDaysIcon,
-  BookOpenIcon,
-  MegaphoneIcon,
-  ArrowRightOnRectangleIcon,
-  QuestionMarkCircleIcon,
-  ShieldCheckIcon,
-  AcademicCapIcon,
-  FaimLogoIcon,
-  TagIcon,
-  HashtagIcon
+  ChevronDownIcon, 
+  ChevronLeftIcon, 
+  DocumentPlusIcon, 
+  BriefcaseIcon, 
+  UserGroupIcon, 
+  InboxArrowDownIcon, 
+  CalendarDaysIcon, 
+  BookOpenIcon, 
+  MegaphoneIcon, 
+  ArrowRightOnRectangleIcon, 
+  QuestionMarkCircleIcon, 
+  ShieldCheckIcon, 
+  AcademicCapIcon, 
+  FaimLogoIcon, 
+  TagIcon, 
+  HashtagIcon 
 } from './icons/DummyIcons';
 import { PermissionSet, CompanySettings } from '../types';
 
@@ -27,7 +28,6 @@ interface SidebarProps {
   isMobileOpen: boolean;
   onMobileClose: () => void;
   isDesktopCollapsed: boolean;
-  onDesktopToggle: () => void;
   activePage: string;
   setActivePage: (page: string) => void;
   staffPermissions: { [key: string]: PermissionSet };
@@ -38,7 +38,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen, 
   onMobileClose,
   isDesktopCollapsed,
-  onDesktopToggle,
   activePage,
   setActivePage,
   staffPermissions,
@@ -100,12 +99,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       return item;
   }).filter(item => !item.subItems || item.subItems.length > 0);
 
+  // Since Sidebar is dark bg, prioritize Dark mode logo (typically lighter color)
+  const sidebarLogo = companySettings.appLogoDark || companySettings.appLogoLight || companySettings.logo;
 
   const sidebarContent = (
     <>
-      <div className="flex flex-col items-center justify-center p-4 h-24 border-b border-blue-900/50">
-          {companySettings.logo ? (
-            <img src={companySettings.logo} alt={`${companySettings.name} Logo`} className="w-12 h-12 object-contain" />
+      <div className="flex flex-col items-center justify-center p-4 h-24 border-b border-gray-800 flex-shrink-0">
+          {sidebarLogo ? (
+            <img key={sidebarLogo} src={sidebarLogo} alt={`${companySettings.name} Logo`} className="w-12 h-12 object-contain" />
           ) : (
             <FaimLogoIcon className="w-10 h-10 text-white" />
           )}
@@ -118,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <XIcon className="w-6 h-6" />
         </button>
       </div>
-      <nav className="flex-grow p-2">
+      <nav className="flex-grow p-2 overflow-y-auto">
         <ul>
           {visibleNavItems.map((item) => (
             <li key={item.name}>
@@ -129,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     className={`flex items-center justify-between w-full gap-3 px-3 py-3 my-1 rounded-md transition-colors duration-200 ${
                       activePage === item.name || item.subItems.some(sub => sub.name === activePage || (sub.name === 'Clients' && activePage === 'Client Details'))
                         ? 'text-white'
-                        : 'hover:bg-blue-800 text-gray-300'
+                        : 'hover:bg-gray-800 text-gray-400 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -150,7 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             className={`flex items-center gap-3 pl-3 pr-4 py-2 my-1 rounded-md transition-colors duration-200 text-sm ${
                               activePage === subItem.name || (subItem.name === 'Clients' && activePage === 'Client Details')
                                 ? 'bg-blue-600 text-white shadow-lg'
-                                : 'hover:bg-blue-800 text-gray-400'
+                                : 'hover:bg-gray-800 text-gray-400 hover:text-white'
                             }`}
                           >
                             <span className="w-6 h-6">{subItem.icon}</span>
@@ -168,7 +169,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   className={`flex items-center gap-3 px-3 py-3 my-1 rounded-md transition-colors duration-200 ${
                     activePage === item.name
                       ? 'bg-blue-600 text-white shadow-lg'
-                      : 'hover:bg-blue-800 text-gray-300'
+                      : 'hover:bg-gray-800 text-gray-400 hover:text-white'
                   }`}
                 >
                   <span className="w-6 h-6">{item.icon}</span>
@@ -179,12 +180,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </ul>
       </nav>
-      
-      <div className="p-4 border-t border-blue-900/50">
-        <button onClick={onDesktopToggle} className="hidden md:flex items-center justify-center w-full gap-3 px-3 py-2 my-1 rounded-md hover:bg-blue-800 text-gray-300 transition-colors duration-200">
-           <ChevronLeftIcon className={`w-6 h-6 transition-transform ${isDesktopCollapsed ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
     </>
   );
 
@@ -206,7 +201,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </aside>
 
       {/* Desktop Sidebar */}
-      <aside className={`hidden md:flex flex-col bg-blue-900 text-white transition-all duration-300 ease-in-out ${isDesktopCollapsed ? 'w-20' : 'w-64'}`}>
+      <aside className={`hidden md:flex flex-col bg-gray-900 text-white transition-all duration-300 ease-in-out ${isDesktopCollapsed ? 'w-20' : 'w-64'}`}>
         {sidebarContent}
       </aside>
     </>

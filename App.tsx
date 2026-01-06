@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
@@ -22,247 +22,161 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import AdvancedReportsPage from './pages/AdvancedReportsPage';
 import UserActivityPage from './pages/UserActivityPage';
 import PlaceholderPage from './pages/PlaceholderPage';
-import * as dataService from './services/dataService';
+import MappingsPage from './pages/MappingsPage';
 
+import { DataProvider, usePermissions } from './context/DataContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { GENERATED_REPORTS } from './data/mockData';
+import { Client, PermissionSet } from './types';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { 
-    MILESTONES, 
-    ROLES, 
-    GENERATED_REPORTS,
-    AMENDMENT_REQUESTS as MOCK_AMENDMENT_REQUESTS
-} from './data/mockData';
-import { Staff, Client, ActivityLog, Property, Invoice, Role, CompanySettings, Lead, Promotion, AmendmentRequest } from './types';
+    useClients, useProperties, useInvoices, useStaff, useLeads, 
+    usePromotions, useActivityLogs, useRoles, useAmendments, useCompanySettings 
+} from './hooks/useAppData';
 
-const App: React.FC = () => {
-    const [appData, setAppData] = useState(() => dataService.loadAppData());
+const queryClient = new QueryClient();
 
-    const [currentStaff, setCurrentStaff] = useState<Staff | null>(null);
+const AppContent: React.FC = () => {
+    // --- Data Hooks ---
+    const { clients, saveClient, deleteClient } = useClients();
+    const { properties, saveProperty } = useProperties();
+    const { invoices, saveInvoice } = useInvoices();
+    const { staff, updateStaff } = useStaff(); 
+    const { leads, saveLead, deleteLead } = useLeads();
+    const { promotions, savePromotion, deletePromotion } = usePromotions();
+    const { activityLogs, addActivityLog } = useActivityLogs();
+    const { roles, setRoles } = useRoles();
+    const { amendments, setAmendmentList } = useAmendments();
+    const { companySettings, setCompanySettings } = useCompanySettings();
+    const { rolePermissions } = usePermissions();
+    
+    const { currentStaff, login, logout, isAuthenticated } = useAuth();
+    
     const [activePage, setActivePage] = useState('Dashboard');
     const [pageContext, setPageContext] = useState<any>(null);
-
-    // App State
-    const [staffList, setStaffList] = useState<Staff[]>(appData.staff);
-    const [clientList, setClientList] = useState<Client[]>(appData.clients);
-    const [propertyList, setPropertyList] = useState<Property[]>(appData.properties);
-    const [invoiceList, setInvoiceList] = useState<Invoice[]>(appData.invoices);
-    const [roleList, setRoleList] = useState<Role[]>(ROLES);
-    const [companySettings, setCompanySettings] = useState<CompanySettings>(appData.settings);
-    const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(appData.logs);
-    const [leadList, setLeadList] = useState<Lead[]>(appData.leads);
-    const [promotionList, setPromotionList] = useState<Promotion[]>(appData.promotions);
-    const [amendmentList, setAmendmentList] = useState<AmendmentRequest[]>(MOCK_AMENDMENT_REQUESTS);
     const [clientForInvoice, setClientForInvoice] = useState<Client | null>(null);
 
+    // Dynamic Favicon Update
     useEffect(() => {
-        dataService.saveAllData({
-            clients: clientList,
-            properties: propertyList,
-            staff: staffList,
-            invoices: invoiceList,
-            leads: leadList,
-            promotions: promotionList,
-            settings: companySettings,
-            logs: activityLogs
-        });
-    }, [clientList, propertyList, staffList, invoiceList, leadList, promotionList, companySettings, activityLogs]);
-    
-
-    const handleLogin = (email: string, password: string) => {
-        const user = staffList.find(u => u.email === email && u.password === password);
-        if (user) {
-            setCurrentStaff(user);
-            addActivityLog('Login', `User ${user.fullName} logged in.`);
-            return { success: true, message: 'Login successful' };
+        if (companySettings.favicon) {
+            let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
+            link.href = companySettings.favicon;
         }
-        return { success: false, message: 'Invalid credentials' };
-    };
+    }, [companySettings.favicon]);
 
-    const handleLogout = () => {
+    const handleAddActivityLog = (type: any, description: string) => {
         if (currentStaff) {
-            addActivityLog('Logout', `User ${currentStaff.fullName} logged out.`);
+            addActivityLog(type, description, currentStaff.id);
         }
-        setCurrentStaff(null);
-        setActivePage('Dashboard');
     };
-    
-    const addActivityLog = useCallback((type: ActivityLog['type'], description: string) => {
-        if (!currentStaff) return;
-        const newLog: ActivityLog = {
-            id: Date.now(),
-            userId: currentStaff.id,
-            type,
-            description,
-            timestamp: new Date().toISOString(),
-        };
-        setActivityLogs(prev => [newLog, ...prev]);
-    }, [currentStaff]);
 
     const handleSetPage = (page: string, context: any = null) => {
         setActivePage(page);
         setPageContext(context);
     };
-    
-    const handleUpdateStaff = (staffId: number, details: Partial<Staff>) => {
-        const updatedStaffList = staffList.map(s => s.id === staffId ? { ...s, ...details } : s);
-        setStaffList(updatedStaffList);
-        if (currentStaff?.id === staffId) {
-            setCurrentStaff(prev => prev ? { ...prev, ...details } : null);
-        }
-    };
-    
-    // --- Data Persistence Handlers ---
 
-    const handleSaveClient = async (client: Client) => {
-        let updatedList: Client[];
-        const exists = clientList.some(c => c.id === client.id);
-        if (exists) {
-            updatedList = clientList.map(c => c.id === client.id ? client : c);
-        } else {
-            updatedList = [client, ...clientList];
-        }
-        setClientList(updatedList);
-        return client;
-    };
-    
-    const handleDeleteClient = async (clientId: number) => {
-        const clientToDelete = clientList.find(c => c.id === clientId);
-        if (clientToDelete && window.confirm(`Are you sure you want to delete client "${clientToDelete.name}"? This action cannot be undone.`)) {
-            setClientList(prev => prev.filter(c => c.id !== clientId));
-        }
-    };
+    // Calculate Permissions based on the User's Role ID from the Context.
+    const staffPermissions = useMemo(() => {
+        if (!currentStaff) return {};
+        const userPermissions: { [key: string]: PermissionSet } = {};
+        
+        // Find all permissions associated with the current staff's role ID
+        const rolePerms = rolePermissions.filter(rp => rp.roleId === currentStaff.roleId);
+        
+        rolePerms.forEach(rp => {
+            userPermissions[rp.moduleId] = rp.permissions;
+        });
 
-    const handleSaveProperty = async (property: Property) => {
-        let updatedList: Property[];
-        const exists = propertyList.some(p => p.id === property.id);
-        if (exists) {
-            updatedList = propertyList.map(p => p.id === property.id ? property : p);
-        } else {
-            updatedList = [property, ...propertyList];
+        // Fallback/Default if no permissions found
+        if (Object.keys(userPermissions).length === 0) {
+             userPermissions['Dashboard'] = { view: true, create: false, edit: false, delete: false, approve: false };
         }
-        setPropertyList(updatedList);
-    };
-    
-    const handleSaveInvoice = async (invoice: Invoice) => {
-         let updatedList: Invoice[];
-         const exists = invoiceList.some(i => i.id === invoice.id);
-        if (exists) {
-            updatedList = invoiceList.map(i => i.id === invoice.id ? invoice : i);
-        } else {
-            updatedList = [invoice, ...invoiceList];
-        }
-        setInvoiceList(updatedList);
-    };
 
-    const handleSaveLead = async (lead: Lead) => {
-        let updatedList: Lead[];
-        const exists = leadList.some(l => l.id === lead.id);
-        if (exists) {
-            updatedList = leadList.map(l => l.id === lead.id ? lead : l);
-        } else {
-            updatedList = [lead, ...leadList];
-        }
-        setLeadList(updatedList);
-    };
+        return userPermissions;
+    }, [currentStaff, rolePermissions]);
 
-    const handleDeleteLead = async (leadId: number) => {
-        const leadToDelete = leadList.find(l => l.id === leadId);
-        if (leadToDelete && window.confirm(`Are you sure you want to delete lead "${leadToDelete.fullName}"?`)) {
-            setLeadList(prev => prev.filter(l => l.id !== leadId));
-        }
-    };
-
-    const handleSavePromotion = async (promotion: Promotion) => {
-        let updatedList: Promotion[];
-        const exists = promotionList.some(p => p.id === promotion.id);
-        if (exists) {
-            updatedList = promotionList.map(p => p.id === promotion.id ? promotion : p);
-        } else {
-            updatedList = [promotion, ...promotionList];
-        }
-        setPromotionList(updatedList);
-    };
-    
-    const handleDeletePromotion = async (promotionId: number) => {
-        const promoToDelete = promotionList.find(p => p.id === promotionId);
-        if (promoToDelete && window.confirm(`Are you sure you want to delete promotion "${promoToDelete.title}"?`)) {
-            setPromotionList(prev => prev.filter(p => p.id !== promotionId));
-        }
-    };
-    
+    if (!isAuthenticated || !currentStaff) {
+        return <LoginPage onLogin={login} companySettings={companySettings} />;
+    }
 
     const renderPage = () => {
         switch (activePage) {
             case 'Dashboard':
-                return <Dashboard clients={clientList} properties={propertyList} invoices={invoiceList} />;
+                return <Dashboard />;
             case 'Clients':
                 return <ClientsPage 
-                    clients={clientList} 
-                    onSaveClient={handleSaveClient}
-                    onDeleteClient={handleDeleteClient}
-                    properties={propertyList} 
-                    milestones={MILESTONES}
+                    clients={clients} 
+                    onSaveClient={saveClient}
+                    onDeleteClient={deleteClient}
+                    properties={properties} 
+                    milestones={[{ acronym: 'REG', label: 'Registration', progress: 10 }, { acronym: 'PAYM', label: 'Payment', progress: 40 }, { acronym: 'IND', label: 'Indenture', progress: 70 }, { acronym: 'COMP', label: 'Completed', progress: 100 }]}
                     onClientSelect={(client) => handleSetPage('Client Details', client)} 
                     setActivePage={handleSetPage}
                     setClientForInvoice={setClientForInvoice}
-                    invoices={invoiceList}
-                    addActivityLog={addActivityLog}
+                    invoices={invoices}
+                    addActivityLog={handleAddActivityLog}
                 />;
             case 'Client Details':
                 return <ClientDetailPage 
                     client={pageContext} 
-                    properties={propertyList}
+                    properties={properties}
                     onBack={() => handleSetPage('Clients')}
-                    currentStaff={currentStaff!}
-                    roles={roleList}
+                    currentStaff={currentStaff}
+                    roles={roles}
                     setActivePage={handleSetPage}
                 />;
             case 'Account Management':
                  return <AccountManagementPage 
-                    clients={clientList}
-                    onSaveClient={handleSaveClient}
+                    clients={clients}
+                    onSaveClient={saveClient}
                     onClientSelect={(client) => handleSetPage('Client Details', client)}
-                    invoices={invoiceList}
-                    onSaveInvoice={handleSaveInvoice}
+                    invoices={invoices}
+                    onSaveInvoice={saveInvoice}
                     clientForInvoice={clientForInvoice}
                     setClientForInvoice={setClientForInvoice}
-                    receiptPattern={null} // Add state for this if needed
+                    receiptPattern={null} 
                     setReceiptPattern={() => {}}
                     setReceiptAlerts={() => {}}
-                    currentStaff={currentStaff!}
+                    currentStaff={currentStaff}
                  />;
             case 'Settings':
                 return <SettingsPage 
-                    currentStaff={currentStaff!} 
-                    staff={staffList}
-                    setStaff={setStaffList}
-                    roles={roleList}
-                    setRoles={setRoleList}
+                    currentStaff={currentStaff} 
+                    staff={staff}
+                    roles={roles}
+                    setRoles={setRoles}
                     onViewStaffActivity={(staff) => handleSetPage('Staff Activity', staff)}
                     companySettings={companySettings}
                     setCompanySettings={setCompanySettings}
-                    onUpdateStaff={handleUpdateStaff}
+                    onUpdateStaff={updateStaff}
                 />;
             case 'CEO Hub':
                  return <CEOHub
                     setActivePage={handleSetPage}
-                    properties={propertyList}
-                    clients={clientList}
-                    invoices={invoiceList}
-                    staff={staffList}
-                    setStaff={setStaffList}
-                    roles={roleList}
+                    properties={properties}
+                    clients={clients}
+                    invoices={invoices}
+                    staff={staff}
+                    roles={roles}
                     onViewStaffActivity={(staff) => handleSetPage('Staff Activity', staff)}
-                    addActivityLog={addActivityLog}
+                    addActivityLog={handleAddActivityLog}
                 />;
              case 'Properties':
-                return <PropertiesPage properties={propertyList} currentStaff={currentStaff!} onBack={pageContext?.from === 'CEO Hub' ? () => handleSetPage('CEO Hub') : undefined} />;
+                return <PropertiesPage properties={properties} currentStaff={currentStaff} onBack={pageContext?.from === 'CEO Hub' ? () => handleSetPage('CEO Hub') : undefined} />;
              case 'New Land Acquisition':
-                return <LandPurchaseFormPage onBack={() => handleSetPage('CEO Hub')} properties={propertyList} onSaveProperty={handleSaveProperty} />;
+                return <LandPurchaseFormPage onBack={() => handleSetPage('CEO Hub')} properties={properties} onSaveProperty={saveProperty} />;
              case 'Promotions':
                 return <PromotionsPage 
-                    promotions={promotionList} 
-                    onSavePromotion={handleSavePromotion}
-                    onDeletePromotion={handleDeletePromotion}
-                    properties={propertyList} 
+                    promotions={promotions} 
+                    onSavePromotion={savePromotion}
+                    onDeletePromotion={deletePromotion}
+                    properties={properties} 
                     showForm={true} 
                     onBack={pageContext?.from === 'CEO Hub' ? () => handleSetPage('CEO Hub') : undefined} 
                 />;
@@ -270,33 +184,48 @@ const App: React.FC = () => {
                 return <AdministrationPage setActivePage={handleSetPage} />;
             case 'Lead Management & Follow-Up':
                 return <LeadsManagementPage 
-                    leads={leadList} 
-                    onSaveLead={handleSaveLead}
-                    onDeleteLead={handleDeleteLead}
-                    clients={clientList} 
-                    onSaveClient={handleSaveClient}
-                    staffList={staffList} 
-                    properties={propertyList} 
-                    milestones={MILESTONES} 
-                    currentStaff={currentStaff!} 
-                    addActivityLog={addActivityLog} 
+                    leads={leads} 
+                    onSaveLead={saveLead}
+                    onDeleteLead={deleteLead}
+                    clients={clients} 
+                    onSaveClient={saveClient}
+                    staffList={staff} 
+                    roles={roles}
+                    properties={properties} 
+                    milestones={[{ acronym: 'REG', label: 'Registration', progress: 10 }]} 
+                    currentStaff={currentStaff} 
+                    addActivityLog={handleAddActivityLog} 
                 />;
             case 'Human Resources':
-                return <HumanResourcesPage onBack={() => handleSetPage('Administration')} staff={staffList} setStaff={setStaffList} roles={roleList} addActivityLog={addActivityLog} />;
+                return <HumanResourcesPage onBack={() => handleSetPage('Administration')} staff={staff} roles={roles} addActivityLog={handleAddActivityLog} />;
             case 'All Land Layouts':
-                return <AllLandLayoutsPage onBack={() => handleSetPage('Administration')} properties={propertyList} />;
+                return <AllLandLayoutsPage onBack={() => handleSetPage('Administration')} properties={properties} />;
             case 'Allocate Plot':
-                return <AllocatePlotPage onBack={() => handleSetPage('Administration')} clients={clientList} properties={propertyList}/>;
+                return <AllocatePlotPage onBack={() => handleSetPage('Administration')} clients={clients} properties={properties}/>;
             case 'Client Documentation':
-                return <ClientDocumentationPage onBack={() => handleSetPage('Administration')} clients={clientList} onSaveClient={handleSaveClient} />;
+                return <ClientDocumentationPage onBack={() => handleSetPage('Administration')} clients={clients} onSaveClient={saveClient} />;
+            case 'Mappings':
+                return <MappingsPage onBack={() => handleSetPage('Administration')} properties={properties} />;
             case 'Amendment Form':
-                return <AmendmentFormPage client={pageContext} onBack={() => handleSetPage('Client Details', pageContext)} onSave={(data) => { setAmendmentList(prev => [data, ...prev]); alert('Amendment saved!'); handleSetPage('Client Details', pageContext);}} currentStaff={currentStaff!} />;
+                return (
+                    <AmendmentFormPage 
+                        client={pageContext} 
+                        onBack={() => handleSetPage('Client Details', pageContext)} 
+                        onSave={async (data, updatedClient) => { 
+                            setAmendmentList(prev => [data, ...prev]); 
+                            await saveClient(updatedClient);
+                            handleAddActivityLog('Update', `Processed amendment request for client: ${updatedClient.name}`);
+                            alert('Amendment processed and client record updated successfully!'); 
+                            handleSetPage('Client Details', updatedClient);
+                        }} 
+                        currentStaff={currentStaff} 
+                    />
+                );
             case 'Analytics & Reports':
-                return <AnalyticsPage onBack={() => handleSetPage('CEO Hub')} clients={clientList} properties={propertyList} invoices={invoiceList} staff={staffList} addActivityLog={addActivityLog} />;
+                return <AnalyticsPage onBack={() => handleSetPage('CEO Hub')} clients={clients} properties={properties} invoices={invoices} staff={staff} addActivityLog={handleAddActivityLog} />;
             case 'Advanced Reports':
-                return <AdvancedReportsPage onBack={() => handleSetPage('CEO Hub')} reports={GENERATED_REPORTS} addActivityLog={addActivityLog} />;
+                return <AdvancedReportsPage onBack={() => handleSetPage('CEO Hub')} reports={GENERATED_REPORTS} addActivityLog={handleAddActivityLog} />;
             case 'Staff Activity':
-// FIX: Changed prop 'user' to 'staffMember' to match the props interface of UserActivityPage.
                 return <UserActivityPage staffMember={pageContext} logs={activityLogs.filter(l => l.userId === pageContext.id)} onBack={() => handleSetPage('Settings')} />;
             case 'Mailing':
             case 'Leave':
@@ -310,26 +239,31 @@ const App: React.FC = () => {
         }
     };
 
-    if (!currentStaff) {
-        return <LoginPage onLogin={handleLogin} companySettings={companySettings} />;
-    }
-    
-    const staffPermissions = ROLES.find(r => r.id === currentStaff.roleId)?.name === 'CEO' 
-        ? { Dashboard: { view: true }, Clients: { view: true }, 'Account Management': { view: true }, Promotions: { view: true }, Team: { view: true }, 'Leads Management': { view: true }, Administration: { view: true }, 'CEO Hub': { view: true }, Settings: { view: true } }
-        : { Dashboard: { view: true }, Clients: { view: true }, 'Account Management': { view: true }, Team: { view: true }, 'Leads Management': { view: true }, Settings: { view: true } };
-
-
     return (
         <Layout 
             activePage={activePage} 
             setActivePage={handleSetPage} 
             currentStaff={currentStaff} 
-            onLogout={handleLogout}
-            staffPermissions={staffPermissions as any}
+            onLogout={logout}
+            staffPermissions={staffPermissions}
             companySettings={companySettings}
         >
             {renderPage()}
         </Layout>
+    );
+};
+
+const App: React.FC = () => {
+    return (
+        <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+                <AuthProvider>
+                    <DataProvider>
+                        <AppContent />
+                    </DataProvider>
+                </AuthProvider>
+            </ThemeProvider>
+        </QueryClientProvider>
     );
 };
 

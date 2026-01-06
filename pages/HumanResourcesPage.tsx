@@ -1,102 +1,105 @@
+
 import React from 'react';
 import { Staff, Role, ActivityLog } from '../types';
-import { ArrowLeftIcon, BriefcaseIcon, DocumentDuplicateIcon, FolderIcon } from '../components/icons/DummyIcons';
+import { ArrowLeftIcon, BriefcaseIcon, FolderIcon } from '../components/icons/DummyIcons';
+import { TableContainer, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
 
 interface HumanResourcesPageProps {
   onBack: () => void;
   staff: Staff[];
-  setStaff: React.Dispatch<React.SetStateAction<Staff[]>>;
   roles: Role[];
   addActivityLog: (type: ActivityLog['type'], description: string) => void;
 }
 
 const HumanResourcesPage: React.FC<HumanResourcesPageProps> = ({ onBack, staff, roles }) => {
     // In a real app, these functions would open modals to upload/update details
-    const handleEditDetails = (staffId: number) => {
+    const handleEditDetails = (staffId: string) => {
         alert(`Editing employment details for staff ID: ${staffId}`);
     };
     
-    const handleManageDocuments = (staffId: number) => {
+    const handleManageDocuments = (staffId: string) => {
         alert(`Managing documents for staff ID: ${staffId}`);
     };
 
     return (
         <div className="space-y-6">
             <div>
-                <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 mb-2">
+                <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-2 transition-colors">
                     <ArrowLeftIcon className="w-5 h-5" /> Back to Administration
                 </button>
                 <div className="flex items-center gap-4">
-                     <BriefcaseIcon className="w-10 h-10 text-teal-600" />
+                     <BriefcaseIcon className="w-10 h-10 text-teal-600 dark:text-teal-400" />
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Human Resources</h1>
-                        <p className="text-gray-500 mt-1">Manage staff employment details and official documents.</p>
+                        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Human Resources</h1>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">Manage staff employment details and official documents.</p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+            <TableContainer>
+                <table className="w-full text-sm text-left">
+                    <Thead>
                         <tr>
-                            <th scope="col" className="px-6 py-3">Staff Member</th>
-                            <th scope="col" className="px-6 py-3">Position & Role</th>
-                            <th scope="col" className="px-6 py-3">Employment Details</th>
-                            <th scope="col" className="px-6 py-3">Documents</th>
-                            <th scope="col" className="px-6 py-3 text-center">Actions</th>
+                            <Th>Staff Member</Th>
+                            <Th>Position & Role</Th>
+                            <Th>Employment Details</Th>
+                            <Th>Documents</Th>
+                            <Th className="text-center">Actions</Th>
                         </tr>
-                    </thead>
-                    <tbody className="divide-y">
+                    </Thead>
+                    <Tbody>
                         {staff.map(member => {
                             const roleName = roles.find(r => r.id === member.roleId)?.name || 'N/A';
                             const details = member.employmentDetails;
                             const docs = member.documents;
                             return (
-                                <tr key={member.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">
-                                        <div>{member.fullName}</div>
-                                        <div className="text-xs text-gray-500">{member.email}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div>{details?.position || 'Not Set'}</div>
-                                        <div className="text-xs font-semibold text-blue-700">{roleName}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
+                                <Tr key={member.id}>
+                                    <Td>
+                                        <div className="font-medium text-gray-900 dark:text-white">{member.fullName}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">{member.email}</div>
+                                    </Td>
+                                    <Td>
+                                        <div className="text-gray-900 dark:text-gray-200">{details?.position || 'Not Set'}</div>
+                                        <div className="text-xs font-semibold text-blue-700 dark:text-blue-400">{roleName}</div>
+                                    </Td>
+                                    <Td className="text-gray-700 dark:text-gray-300">
                                         {details ? (
                                             <>
                                                 <div>Start Date: {details.startDate}</div>
                                                 <div className="text-xs">{details.employmentType}</div>
                                             </>
-                                        ) : <span className="text-gray-400">Not specified</span>}
-                                    </td>
-                                    <td className="px-6 py-4">
+                                        ) : <span className="text-gray-400 dark:text-gray-500">Not specified</span>}
+                                    </Td>
+                                    <Td>
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-xs font-semibold ${docs?.contractUrl ? 'text-green-600' : 'text-red-400'}`}>Contract</span>
-                                            <span className={`text-xs font-semibold ${docs?.idUrl ? 'text-green-600' : 'text-red-400'}`}>ID</span>
-                                            <span className={`text-xs font-semibold ${docs?.cvUrl ? 'text-green-600' : 'text-red-400'}`}>CV</span>
+                                            <span className={`text-xs font-semibold ${docs?.contractUrl ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-500'}`}>Contract</span>
+                                            <span className={`text-xs font-semibold ${docs?.idUrl ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-500'}`}>ID</span>
+                                            <span className={`text-xs font-semibold ${docs?.cvUrl ? 'text-green-600 dark:text-green-400' : 'text-red-400 dark:text-red-500'}`}>CV</span>
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
+                                    </Td>
+                                    <Td className="text-center">
                                         <div className="flex justify-center gap-2">
-                                            <button onClick={() => handleEditDetails(member.id)} className="font-medium text-blue-600 hover:underline" title="Edit Employment Details">
+                                            <button onClick={() => handleEditDetails(member.id)} className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" title="Edit Employment Details">
                                                 <BriefcaseIcon className="w-5 h-5" />
                                             </button>
-                                            <button onClick={() => handleManageDocuments(member.id)} className="font-medium text-teal-600 hover:underline" title="Manage Documents">
+                                            <button onClick={() => handleManageDocuments(member.id)} className="font-medium text-teal-600 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300" title="Manage Documents">
                                                 <FolderIcon className="w-5 h-5" />
                                             </button>
                                         </div>
-                                    </td>
-                                </tr>
+                                    </Td>
+                                </Tr>
                             );
                         })}
-                    </tbody>
+                        {staff.length === 0 && (
+                            <Tr>
+                                <Td className="text-center py-10" colSpan={5}>
+                                    <p className="text-gray-500 dark:text-gray-400">No staff members found.</p>
+                                </Td>
+                            </Tr>
+                        )}
+                    </Tbody>
                 </table>
-                 {staff.length === 0 && (
-                    <div className="text-center py-10">
-                        <p className="text-gray-500">No staff members found.</p>
-                    </div>
-                )}
-            </div>
+            </TableContainer>
         </div>
     );
 };

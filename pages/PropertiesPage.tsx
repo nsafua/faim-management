@@ -1,6 +1,9 @@
+
 import React from 'react';
 import { Property, Staff } from '../types';
 import { ArrowLeftIcon } from '../components/icons/DummyIcons';
+import { TableContainer, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
+import { Badge } from '../components/ui/Badge';
 
 interface PropertiesPageProps {
   properties: Property[];
@@ -8,18 +11,14 @@ interface PropertiesPageProps {
   currentStaff: Staff;
 }
 
-const getRegistrationStatusColor = (status: Property['registrationStatus']) => {
+const getRegistrationStatusBadgeVariant = (status: Property['registrationStatus']) => {
   switch (status) {
-    case 'Titled': return 'bg-blue-100 text-blue-800';
-    case 'Indenture': return 'bg-purple-100 text-purple-800';
-    case 'Plotted': return 'bg-yellow-100 text-yellow-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'Titled': return 'info';
+    case 'Indenture': return 'purple';
+    case 'Plotted': return 'warning';
+    default: return 'neutral';
   }
 };
-
-const getAvailabilityStatusColor = (isAvailable: boolean) => {
-    return isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-}
 
 const formatCurrency = (amount: number) => `GHC ${new Intl.NumberFormat('en-GH').format(amount)}`;
 
@@ -28,26 +27,26 @@ const PropertiesPage: React.FC<PropertiesPageProps> = ({ properties, onBack }) =
     <div className="space-y-6">
       <div>
         {onBack && (
-            <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 mb-2">
+            <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-2 transition-colors">
                 <ArrowLeftIcon className="w-5 h-5" /> Back to CEO Hub
             </button>
         )}
-        <h1 className="text-3xl font-bold text-gray-800">Properties</h1>
-        <p className="text-gray-500 mt-1">Manage all property listings, inventory, and registration details.</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Properties</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all property listings, inventory, and registration details.</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-        <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+      <TableContainer>
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <Thead>
                 <tr>
-                    <th scope="col" className="px-6 py-3">Location</th>
-                    <th scope="col" className="px-6 py-3">Registration Status</th>
-                    <th scope="col" className="px-6 py-3">Plot Inventory</th>
-                    <th scope="col" className="px-6 py-3 text-right">Price per Plot</th>
-                    <th scope="col" className="px-6 py-3 text-center">Availability</th>
+                    <Th>Location</Th>
+                    <Th>Registration Status</Th>
+                    <Th>Plot Inventory</Th>
+                    <Th className="text-right">Price per Plot</Th>
+                    <Th className="text-center">Availability</Th>
                 </tr>
-            </thead>
-            <tbody>
+            </Thead>
+            <Tbody>
                 {properties.map(prop => {
                     const totalPlots = prop.inventory.reduce((sum, inv) => sum + inv.count, 0);
                     const plotsSold = prop.inventory.reduce((sum, inv) => sum + inv.sold, 0);
@@ -59,22 +58,22 @@ const PropertiesPage: React.FC<PropertiesPageProps> = ({ properties, onBack }) =
                     const discountedPrice = isDiscountActive ? prop.price * (1 - prop.discount.percentage / 100) : prop.price;
 
                     return (
-                        <tr key={prop.id} className="bg-white border-b hover:bg-gray-50">
-                            <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                        <Tr key={prop.id}>
+                            <Td className="font-medium text-gray-900 dark:text-white whitespace-nowrap">
                                 {prop.location}
-                            </td>
-                            <td className="px-6 py-4">
-                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getRegistrationStatusColor(prop.registrationStatus)}`}>
+                            </Td>
+                            <Td>
+                                <Badge variant={getRegistrationStatusBadgeVariant(prop.registrationStatus)}>
                                     {prop.registrationStatus}
-                                </span>
-                            </td>
-                            <td className="px-6 py-4">
-                                <div className="flex flex-col">
-                                    <div className="flex justify-between text-xs font-medium text-gray-600">
+                                </Badge>
+                            </Td>
+                            <Td>
+                                <div className="flex flex-col min-w-[180px]">
+                                    <div className="flex justify-between text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                                         <span>{plotsSold} Sold / {totalPlots} Total</span>
                                         <span>({plotsAvailable} Left)</span>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                         <div 
                                             className="bg-blue-600 h-2 rounded-full" 
                                             style={{ width: `${soldPercentage}%` }}
@@ -85,38 +84,38 @@ const PropertiesPage: React.FC<PropertiesPageProps> = ({ properties, onBack }) =
                                         ></div>
                                     </div>
                                 </div>
-                            </td>
-                            <td className="px-6 py-4 font-semibold text-gray-800 text-right">
+                            </Td>
+                            <Td className="font-semibold text-gray-800 dark:text-white text-right">
                                {isDiscountActive ? (
-                                    <div>
-                                        <span className="text-green-600 font-bold">{formatCurrency(discountedPrice)}</span>
-                                        <div className="flex items-center justify-end gap-2">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-green-600 dark:text-green-400 font-bold">{formatCurrency(discountedPrice)}</span>
+                                        <div className="flex items-center gap-2">
                                             <span className="text-xs text-red-500 line-through">{formatCurrency(prop.price)}</span>
-                                            <span className="text-xs font-bold bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                                            <Badge variant="success" className="text-[10px] px-1 py-0">
                                                 {prop.discount?.percentage}% OFF
-                                            </span>
+                                            </Badge>
                                         </div>
                                     </div>
                                 ) : (
                                     formatCurrency(prop.price)
                                 )}
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getAvailabilityStatusColor(isAvailable)}`}>
+                            </Td>
+                            <Td className="text-center">
+                                <Badge variant={isAvailable ? 'success' : 'danger'}>
                                     {isAvailable ? 'Available' : 'Sold Out'}
-                                </span>
-                            </td>
-                        </tr>
+                                </Badge>
+                            </Td>
+                        </Tr>
                     );
                 })}
-            </tbody>
+            </Tbody>
         </table>
         {properties.length === 0 && (
             <div className="text-center py-10">
-                <p className="text-gray-500">No properties found.</p>
+                <p className="text-gray-500 dark:text-gray-400">No properties found.</p>
             </div>
         )}
-      </div>
+      </TableContainer>
     </div>
   );
 };

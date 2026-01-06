@@ -1,6 +1,9 @@
+
 import React from 'react';
 import { GeneratedReport, ActivityLog } from '../types';
-import { ArrowLeftIcon, DocumentTextIcon, CalendarDaysIcon } from '../components/icons/DummyIcons';
+import { ArrowLeftIcon, DocumentTextIcon } from '../components/icons/DummyIcons';
+import { TableContainer, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
+import { Badge } from '../components/ui/Badge';
 
 interface AdvancedReportsPageProps {
   onBack: () => void;
@@ -19,60 +22,60 @@ const AdvancedReportsPage: React.FC<AdvancedReportsPageProps> = ({ onBack, repor
     return (
         <div className="space-y-6">
             <div>
-                <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 mb-2">
+                <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-2 transition-colors">
                     <ArrowLeftIcon className="w-5 h-5" /> Back to CEO Hub
                 </button>
                 <div className="flex items-center gap-4">
-                     <DocumentTextIcon className="w-10 h-10 text-indigo-600" />
+                     <DocumentTextIcon className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">Advanced Reports</h1>
-                        <p className="text-gray-500 mt-1">Access automatically generated monthly business reports.</p>
+                        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Advanced Reports</h1>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">Access automatically generated monthly business reports.</p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+            <TableContainer>
+                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <Thead>
                         <tr>
-                            <th scope="col" className="px-6 py-3">Report Title</th>
-                            <th scope="col" className="px-6 py-3">Type</th>
-                            <th scope="col" className="px-6 py-3">Period</th>
-                            <th scope="col" className="px-6 py-3">Generated On</th>
-                            <th scope="col" className="px-6 py-3 text-center">Actions</th>
+                            <Th>Report Title</Th>
+                            <Th>Type</Th>
+                            <Th>Period</Th>
+                            <Th>Generated On</Th>
+                            <Th className="text-center">Actions</Th>
                         </tr>
-                    </thead>
-                    <tbody className="divide-y">
+                    </Thead>
+                    <Tbody>
                         {reports.sort((a,b) => new Date(b.generatedDate).getTime() - new Date(a.generatedDate).getTime()).map(report => (
-                            <tr key={report.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                            <Tr key={report.id}>
+                                <Td className="font-medium text-gray-900 dark:text-white whitespace-nowrap">
                                     {report.title}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                                </Td>
+                                <Td>
+                                    <Badge variant="info">
                                         {report.type}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">{report.period}</td>
-                                <td className="px-6 py-4">{new Date(report.generatedDate).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 text-center">
+                                    </Badge>
+                                </Td>
+                                <Td>{report.period}</Td>
+                                <Td>{new Date(report.generatedDate).toLocaleDateString()}</Td>
+                                <Td className="text-center">
                                     <button 
                                         onClick={() => handleDownload(report)} 
-                                        className="font-medium text-blue-600 hover:underline"
+                                        className="font-medium text-blue-600 hover:underline dark:text-blue-400"
                                     >
                                         Download
                                     </button>
-                                </td>
-                            </tr>
+                                </Td>
+                            </Tr>
                         ))}
-                    </tbody>
+                    </Tbody>
                 </table>
                 {reports.length === 0 && (
                     <div className="text-center py-10">
-                        <p className="text-gray-500">No generated reports found.</p>
+                        <p className="text-gray-500 dark:text-gray-400">No generated reports found.</p>
                     </div>
                 )}
-            </div>
+            </TableContainer>
         </div>
     );
 };
