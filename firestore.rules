@@ -20,16 +20,18 @@ service cloud.firestore {
     }
 
     function isCEO() {
-      // CEO check: ID "1" is the legacy seed ID, allow both for safety
-      return isUserAuthenticated() && (getRole() == 'CEO' || request.auth.token.email == 'ceo@faim.com');
+      let role = getRole();
+      return isUserAuthenticated() && (role == 'CEO' || role == 'ceo' || request.auth.token.email == 'ceo@faim.com');
     }
 
     function isChiefAccountant() {
-      return isUserAuthenticated() && getRole() == 'Chief Accountant';
+      let role = getRole();
+      return isUserAuthenticated() && (role == 'Chief Accountant' || role == 'CHIEF ACCOUNTANT' || role == 'CHIEF_ACCOUNTANT');
     }
 
     function isAdmin() {
-      return isUserAuthenticated() && getRole() == 'Administrator';
+      let role = getRole();
+      return isUserAuthenticated() && (role == 'Administrator' || role == 'ADMINISTRATOR' || role == 'ADMIN' || role == 'Admin');
     }
 
     // --- Directory & Profile Isolation ---
@@ -57,9 +59,44 @@ service cloud.firestore {
 
     match /workflow_triggers/{triggerId} {
       allow get: if isUserAuthenticated();
-      allow list: if isUserAuthenticated() && (isCEO() || isAdmin() || isChiefAccountant());
+      allow list: if isUserAuthenticated();
       allow create: if isUserAuthenticated();
-      allow update, delete: if isCEO();
+      allow update: if isUserAuthenticated();
+      allow delete: if isCEO();
+    }
+
+    match /activity_logs/{docId} {
+      allow read, write: if isUserAuthenticated();
+    }
+
+    match /invoices/{docId} {
+      allow read, write: if isUserAuthenticated();
+    }
+
+    match /properties/{docId} {
+      allow read, write: if isUserAuthenticated();
+    }
+
+    match /leads/{docId} {
+      allow read, write: if isUserAuthenticated();
+    }
+
+    match /promotions/{docId} {
+      allow read, write: if isUserAuthenticated();
+    }
+
+    match /amendments/{docId} {
+      allow read, write: if isUserAuthenticated();
+    }
+
+    match /settings/{docId} {
+      allow read: if isUserAuthenticated();
+      allow write: if isCEO() || isAdmin();
+    }
+
+    match /roles/{docId} {
+      allow read: if isUserAuthenticated();
+      allow write: if isCEO() || isAdmin();
     }
 
     match /clients/{clientId} {

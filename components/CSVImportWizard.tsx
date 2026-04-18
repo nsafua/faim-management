@@ -1,7 +1,8 @@
 
-import React, { useState, useCallback, ChangeEvent } from 'react';
+import React, { useCallback } from 'react';
 import { XIcon } from './icons/XIcon';
 import { UploadIcon, DocumentTextIcon, ExclamationTriangleIcon, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/DummyIcons';
+import { useCSVImport } from '../hooks/useCSVImport';
 
 interface CSVImportWizardProps {
   isOpen: boolean;
@@ -14,190 +15,28 @@ interface CSVImportWizardProps {
 }
 
 const CSVImportWizard: React.FC<CSVImportWizardProps> = ({ isOpen, onClose, onImport, requiredHeaders, sampleHeaders, sampleData, wizardTitle }) => {
-    const [step, setStep] = useState(1);
-    const [file, setFile] = useState<File | null>(null);
-    const [parsedData, setParsedData] = useState<any[]>([]);
-    const [validationResults, setValidationResults] = useState<{ data: any; errors: string[] }[]>([]);
-    const [errors, setErrors] = useState<string[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    const resetWizard = useCallback(() => {
-        setStep(1);
-        setFile(null);
-        setParsedData([]);
-        setValidationResults([]);
-        setErrors([]);
-        setIsLoading(false);
-    }, []);
+    const {
+        step,
+        file,
+        parsedData,
+        validationResults,
+        errors,
+        isLoading,
+        resetWizard,
+        handleFileChange,
+        handleNext,
+        handleBack,
+        handleConfirmImport,
+        downloadSampleCSV
+    } = useCSVImport(requiredHeaders, onImport);
 
     const handleClose = useCallback(() => {
         resetWizard();
         onClose();
     }, [resetWizard, onClose]);
 
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const selectedFile = e.target.files[0];
-            if (selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv') || selectedFile.type === 'application/vnd.ms-excel') {
-                 setFile(selectedFile);
-                 setErrors([]);
-            } else {
-                setErrors(['Invalid file type. Please upload a .csv file.']);
-                setFile(null);
-            }
-        }
-    };
-
-    // Robust CSV Line Parser to handle quoted fields containing commas
-    const parseCSVLine = (text: string) => {
-        const result = [];
-        let cell = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            
-            if (char === '"') {
-                // Handle escaped quotes ("") inside a quoted string if needed, 
-                // but primarily toggle quote state
-                if (inQuotes && text[i + 1] === '"') {
-                    cell += '"';
-                    i++; // skip next quote
-                } else {
-                    inQuotes = !inQuotes;
-                }
-            } else if (char === ',' && !inQuotes) {
-                // End of cell
-                result.push(cell.trim());
-                cell = '';
-            } else {
-                cell += char;
-            }
-        }
-        // Push the last cell
-        result.push(cell.trim());
-        return result;
-    };
-
-    const processFile = useCallback(() => {
-        if (!file) return;
-
-        setIsLoading(true);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const text = e.target?.result as string;
-                // Split by newline, filter empty lines
-                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-                
-                if (lines.length < 2) {
-                    setErrors(['CSV file must have a header row and at least one data row.']);
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Parse headers (strip BOM if present and quotes)
-                const headerLine = lines[0].replace(/^\uFEFF/, ''); 
-                const header = parseCSVLine(headerLine).map(h => h.replace(/^"|"$/g, '').trim());
-                
-                const missingHeaders = requiredHeaders.filter(rh => !header.includes(rh));
-                const localErrors: string[] = [];
-
-                if (missingHeaders.length > 0) {
-                    localErrors.push(`Warning: Missing required columns: ${missingHeaders.join(', ')}. These fields will be blank.`);
-                }
-
-                const validatedData = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const values = parseCSVLine(lines[i]);
-                    
-                    // Skip empty rows that might happen due to trailing newlines
-                    if (values.length === 1 && values[0] === '') continue;
-
-                    const rowErrors: string[] = [];
-                    const rowData: { [key: string]: string } = {};
-                    
-                    header.forEach((h, index) => {
-                        // Clean up quotes from values if they exist
-                        rowData[h] = values[index] ? values[index].replace(/^"|"$/g, '') : '';
-                    });
-
-                    // Row-level validation
-                    requiredHeaders.forEach(rh => {
-                        if (!rowData[rh] || rowData[rh].trim() === '') {
-                            rowErrors.push(`Missing required field: '${rh}'.`);
-                        }
-                    });
-
-                    // Basic format validation
-                    if (rowData.email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(rowData.email)) {
-                        rowErrors.push(`Invalid email format for '${rowData.email}'.`);
-                    }
-
-                    validatedData.push({ data: rowData, errors: rowErrors });
-                }
-
-                const validData = validatedData.filter(v => v.errors.length === 0).map(v => v.data);
-                const invalidRowCount = validatedData.length - validData.length;
-
-                if (invalidRowCount > 0) {
-                    localErrors.push(`Found issues in ${invalidRowCount} row(s). These rows will be skipped.`);
-                } else if (validData.length === 0) {
-                    localErrors.push("No valid data rows found to import.");
-                }
-                
-                setValidationResults(validatedData);
-                setParsedData(validData);
-                setErrors(localErrors);
-                setStep(3);
-
-            } catch (error) {
-                 console.error(error);
-                 setErrors(['An unexpected error occurred while parsing the file. Please check CSV format.']);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        reader.onerror = () => {
-             setErrors(['Failed to read the file.']);
-             setIsLoading(false);
-        }
-        reader.readAsText(file);
-    }, [file, requiredHeaders]);
-
-    const handleNext = () => {
-        if (step === 2 && file) {
-            processFile();
-        } else {
-            setStep(s => s + 1);
-        }
-    };
-
-    const handleBack = () => setStep(s => s - 1);
-
-    const handleConfirmImport = () => {
-        setIsLoading(true);
-        // Using setTimeout to allow UI to update before heavy processing
-        setTimeout(() => {
-            onImport(parsedData);
-            setStep(4);
-            setIsLoading(false);
-        }, 100);
-    };
-
-    const downloadSampleCSV = () => {
-        const csvContent = `${sampleHeaders}\n${sampleData}`;
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "faim_import_sample.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+    const handleDownloadSample = () => {
+        downloadSampleCSV(sampleHeaders, sampleData);
     };
 
     if (!isOpen) return null;
@@ -227,7 +66,7 @@ const CSVImportWizard: React.FC<CSVImportWizardProps> = ({ isOpen, onClose, onIm
                                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">* Fields marked as required in the client form must not be empty.</p>
                             </div>
                             <div className="mt-6">
-                                <button onClick={downloadSampleCSV} className="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center gap-2">
+                                <button onClick={handleDownloadSample} className="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center gap-2">
                                     <DocumentTextIcon className="w-5 h-5" />
                                     Download Sample CSV
                                 </button>

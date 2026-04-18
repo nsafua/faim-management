@@ -4,9 +4,9 @@ import { XMarkIcon, PrinterIcon, PaperAirplaneIcon, BuildingLibraryIcon, Banknot
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { TableContainer, Thead, Tbody, Tr, Th, Td } from '../ui/Table';
-import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLedgerCalculations } from '../../hooks/useLedgerCalculations';
+import { LedgerStatementTable } from './LedgerStatementTable';
 
 interface AccountStatementModalProps {
     isOpen: boolean;
@@ -31,66 +31,8 @@ export const AccountStatementModal: React.FC<AccountStatementModalProps> = ({ is
         properties.find(p => p.location === client.location)
     , [properties, client.location]);
 
-    // Financial Calculation Logic: Chronological Ledger with specific Land-Sale columns
-    const statementData = useMemo(() => {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const today = new Date();
-        
-        // 1. Sort history chronologically
-        const fullHistory = [...client.payment.paymentHistory].sort((a, b) => 
-            new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-
-        let runningBalance = client.payment.total;
-        const ledgerEntries: any[] = [];
-        let totalPaidInPeriod = 0;
-
-        // Base entry logic - Merge installments with history
-        // If history is empty, we show the initial expectation
-        if (fullHistory.length === 0) {
-            ledgerEntries.push({
-                type: 'Initial Deposit',
-                expectedDate: client.regDate,
-                actualDate: '',
-                amount: 0,
-                status: new Date(client.regDate) < today ? 'Overdue' : 'Pending',
-                balance: runningBalance
-            });
-        } else {
-            fullHistory.forEach((txn, idx) => {
-                runningBalance -= txn.amount;
-                const txnDate = new Date(txn.date);
-                
-                // Determine Row Type
-                const rowType = idx === 0 ? 'Initial Deposit' : 'Instalment Payment';
-                
-                // Determine Status
-                let status = 'Paid';
-                if (txn.status === 'Failed') status = 'Adjustment';
-                else if (txn.amount > (client.payment.total / 12)) status = 'Advance'; // Simplified logic for demo
-                
-                if (txnDate >= start && txnDate <= end) {
-                    totalPaidInPeriod += txn.amount;
-                }
-
-                ledgerEntries.push({
-                    type: rowType,
-                    expectedDate: client.regDate, // Simplified: using regDate as expected for first, ideally map to installments array
-                    actualDate: txn.date,
-                    amount: txn.amount,
-                    status: status,
-                    balance: runningBalance
-                });
-            });
-        }
-
-        return {
-            ledgerEntries,
-            totalPaidInPeriod,
-            closingBalance: runningBalance
-        };
-    }, [client, startDate, endDate]);
+    // Financial Calculation Logic: Chronological Ledger with specific Land-Sale columns via custom hook
+    const statementData = useLedgerCalculations(client, startDate, endDate);
 
     // Role-Based Action Permissions: Authority Locked to CEO and Chief Accountant only
     const roleId = currentStaff?.roleId || '';
@@ -100,16 +42,6 @@ export const AccountStatementModal: React.FC<AccountStatementModalProps> = ({ is
     const canMail = isAuthorized;
 
     const formatCurrency = (amount: number) => `₵${new Intl.NumberFormat('en-GH', { minimumFractionDigits: 2 }).format(amount)}`;
-
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'Paid': return <Badge variant="success">Paid</Badge>;
-            case 'Partial': return <Badge variant="warning">Partial</Badge>;
-            case 'Overdue': return <Badge variant="danger">Overdue</Badge>;
-            case 'Advance': return <Badge variant="purple">Advance</Badge>;
-            default: return <Badge variant="neutral">{status}</Badge>;
-        }
-    };
 
     const handlePrint = () => {
         if (!canExport) return;
@@ -245,43 +177,7 @@ export const AccountStatementModal: React.FC<AccountStatementModalProps> = ({ is
                         {/* IV. Transactional Ledger */}
                         <div className="space-y-4 shrink-0">
                             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Transaction History (Chronological)</h3>
-                            <div className="border border-slate-200 rounded-lg overflow-hidden overflow-y-auto max-h-[400px] scrollbar-thin">
-                                <table className="w-full text-xs text-left border-collapse">
-                                    <Thead>
-                                        <tr className="bg-slate-50 text-slate-600 font-black uppercase tracking-tighter sticky top-0 z-10 border-b border-slate-200">
-                                            <Th className="px-4 py-3">Type</Th>
-                                            <Th className="px-4 py-3">Expected Date</Th>
-                                            <Th className="px-4 py-3">Actual Date</Th>
-                                            <Th className="px-4 py-3 text-right">Amount Paid</Th>
-                                            <Th className="px-4 py-3 text-center">Status</Th>
-                                            <Th className="px-4 py-3 text-right">Balance Outstanding</Th>
-                                        </tr>
-                                    </Thead>
-                                    <Tbody>
-                                        {statementData.ledgerEntries.map((entry: any, idx: number) => (
-                                            <Tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                                                <Td className="px-4 py-4 font-bold">{entry.type}</Td>
-                                                <Td className="px-4 py-4 font-mono text-slate-500">{entry.expectedDate}</Td>
-                                                <Td className="px-4 py-4 font-mono">{entry.actualDate || '—'}</Td>
-                                                <Td className={`px-4 py-4 text-right font-black ${entry.amount > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
-                                                    {formatCurrency(entry.amount)}
-                                                </Td>
-                                                <Td className="px-4 py-4 text-center">
-                                                    {getStatusBadge(entry.status)}
-                                                </Td>
-                                                <Td className="px-4 py-4 text-right font-black text-blue-600">{formatCurrency(entry.balance)}</Td>
-                                            </Tr>
-                                        ))}
-                                        {statementData.ledgerEntries.length === 0 && (
-                                            <Tr>
-                                                <Td colSpan={6} className="px-4 py-16 text-center text-slate-400 italic">
-                                                    System Audit: No financial transactions found for this account.
-                                                </Td>
-                                            </Tr>
-                                        )}
-                                    </Tbody>
-                                </table>
-                            </div>
+                            <LedgerStatementTable statementData={statementData} formatCurrency={formatCurrency} />
                         </div>
 
                         {/* V. Closing Summary */}
