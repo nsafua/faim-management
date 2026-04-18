@@ -1,13 +1,19 @@
 
 import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { Client, Staff, AmendmentRequest } from '../types';
-import { ArrowLeftIcon, CheckCircleIcon, UploadIcon } from '../components/icons/DummyIcons';
-import { Card } from '../components/ui/Card';
+import { ArrowLeftIcon } from '../components/icons/DummyIcons';
 import { Button } from '../components/ui/Button';
-import { Input, Select } from '../components/ui/Input';
-import { PhoneInput } from '../components/ui/PhoneInput';
-import { EmailInput } from '../components/ui/EmailInput';
 import { uploadFile } from '../services/storageService';
+
+// Import sub-components
+import { AmendmentTypeSelector } from '../components/amendment/AmendmentTypeSelector';
+import { PersonalDetailsAmendment } from '../components/amendment/PersonalDetailsAmendment';
+import { NextOfKinAmendment } from '../components/amendment/NextOfKinAmendment';
+import { PropertyReallocationAmendment } from '../components/amendment/PropertyReallocationAmendment';
+import { PaymentPlanAmendment } from '../components/amendment/PaymentPlanAmendment';
+import { IndentureAmendment } from '../components/amendment/IndentureAmendment';
+import { UploadSection } from '../components/amendment/UploadSection';
+import { OfficeUseSection } from '../components/amendment/OfficeUseSection';
 
 interface AmendmentFormPageProps {
     client: Client;
@@ -25,21 +31,6 @@ const initialFormState: Omit<AmendmentRequest, 'id' | 'clientId' | 'clientFullNa
         receivedBy: '', dateReceived: new Date().toISOString().split('T')[0], status: 'Pending'
     }
 };
-
-const TextArea: React.FC<{ label: string; id: string; value: string; onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void; required?: boolean; rows?: number; name?: string }> = ({ label, id, value, onChange, required, rows = 3, name }) => (
-    <div className="w-full">
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}{required && <span className="text-red-500">*</span>}</label>
-      <textarea
-        id={id}
-        name={name || id}
-        value={value}
-        onChange={onChange}
-        required={required}
-        rows={rows}
-        className="block w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-      />
-    </div>
-);
 
 const AmendmentFormPage: React.FC<AmendmentFormPageProps> = ({ client, onBack, onSave, currentStaff }) => {
     const [formData, setFormData] = useState<any>(initialFormState); // Using any temporarily for easier nested updates during init
@@ -213,241 +204,57 @@ const AmendmentFormPage: React.FC<AmendmentFormPageProps> = ({ client, onBack, o
             </div>
             
             <form id="amendment-form" onSubmit={handleSubmit} className="space-y-6">
-                <Card title="Amendment Request Type">
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Please tick relevant sections and edit the current records.</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        {Object.keys(formData.amendmentTypes).map(key => (
-                            <label key={key} className={`flex items-center space-x-2 cursor-pointer p-2 rounded-md transition-colors border ${formData.amendmentTypes[key] ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={formData.amendmentTypes[key as keyof typeof formData.amendmentTypes]} 
-                                    onChange={() => handleTypeToggle(key as keyof typeof formData.amendmentTypes)} 
-                                    className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 bg-white dark:bg-gray-700"
-                                />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
-                            </label>
-                        ))}
-                    </div>
-                </Card>
+                
+                <AmendmentTypeSelector 
+                    amendmentTypes={formData.amendmentTypes} 
+                    onToggle={handleTypeToggle} 
+                />
 
                 {formData.amendmentTypes.personalDetails && (
-                    <Card title="1. Personal Details">
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <Input 
-                                id="dateOfBirth" 
-                                name="dateOfBirth"
-                                label="Date of Birth" 
-                                type="date" 
-                                value={formData.personalDetails?.dateOfBirth || ''} 
-                                onChange={(e) => handleFormChange('personalDetails', e.target.name, e.target.value)} 
-                            />
-                            <Input 
-                                id="currentAddress" 
-                                name="currentAddress"
-                                label="Current Residential Address" 
-                                value={formData.personalDetails?.currentAddress || ''} 
-                                onChange={(e) => handleFormChange('personalDetails', e.target.name, e.target.value)} 
-                            />
-                            <PhoneInput 
-                                id="phone" 
-                                name="phone"
-                                label="Phone Number" 
-                                value={formData.personalDetails?.phone || ''} 
-                                onChange={(val) => handleFormChange('personalDetails', 'phone', val)} 
-                            />
-                            <EmailInput 
-                                id="email" 
-                                name="email"
-                                label="Email" 
-                                value={formData.personalDetails?.email || ''} 
-                                onChange={(val) => handleFormChange('personalDetails', 'email', val)} 
-                            />
-                            <div className="sm:col-span-2">
-                                <TextArea 
-                                    id="newDetailsToUpdate" 
-                                    name="newDetailsToUpdate"
-                                    label="Additional Notes / Summary of Changes" 
-                                    value={formData.personalDetails?.newDetailsToUpdate || ''} 
-                                    onChange={(e) => handleFormChange('personalDetails', e.target.name, e.target.value)} 
-                                />
-                            </div>
-                        </div>
-                    </Card>
+                    <PersonalDetailsAmendment 
+                        data={formData.personalDetails} 
+                        onChange={(field, val) => handleFormChange('personalDetails', field, val)} 
+                    />
                 )}
                 
                 {formData.amendmentTypes.nextOfKin && (
-                    <Card title="2. Next of Kin Details">
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <Input 
-                                id="kinName" 
-                                name="name"
-                                label="Next of Kin Name" 
-                                value={formData.nextOfKinDetails?.name || ''} 
-                                onChange={(e) => handleFormChange('nextOfKinDetails', e.target.name, e.target.value)} 
-                            />
-                            <Input 
-                                id="kinAddress" 
-                                name="address"
-                                label="Address" 
-                                value={formData.nextOfKinDetails?.address || ''} 
-                                onChange={(e) => handleFormChange('nextOfKinDetails', e.target.name, e.target.value)} 
-                            />
-                            <PhoneInput 
-                                id="kinPhone" 
-                                name="phone"
-                                label="Phone Number" 
-                                value={formData.nextOfKinDetails?.phone || ''} 
-                                onChange={(val) => handleFormChange('nextOfKinDetails', 'phone', val)} 
-                            />
-                            <Input 
-                                id="kinRelationship" 
-                                name="relationship"
-                                label="Relationship" 
-                                value={formData.nextOfKinDetails?.relationship || ''} 
-                                onChange={(e) => handleFormChange('nextOfKinDetails', e.target.name, e.target.value)} 
-                            />
-                            <EmailInput 
-                                id="kinEmail" 
-                                name="email"
-                                label="Email" 
-                                value={formData.nextOfKinDetails?.email || ''} 
-                                onChange={(val) => handleFormChange('nextOfKinDetails', 'email', val)} 
-                            />
-                        </div>
-                    </Card>
+                    <NextOfKinAmendment 
+                        data={formData.nextOfKinDetails} 
+                        onChange={(field, val) => handleFormChange('nextOfKinDetails', field, val)} 
+                    />
                 )}
 
                 {formData.amendmentTypes.propertyReallocation && (
-                    <Card title="3. Property Reallocation">
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
-                                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Current Allocation</label>
-                                <div className="text-sm font-semibold text-gray-800 dark:text-white">{formData.propertyReallocation?.currentLocation}</div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400">Plot: {formData.propertyReallocation?.currentPlot}</div>
-                            </div>
-                            <div></div> {/* Spacer */}
-                            <Input 
-                                id="newLocation" 
-                                name="newLocation"
-                                label="New Location" 
-                                value={formData.propertyReallocation?.newLocation || ''} 
-                                onChange={(e) => handleFormChange('propertyReallocation', e.target.name, e.target.value)} 
-                            />
-                            <Input 
-                                id="newPlot" 
-                                name="newPlot"
-                                label="New Plot Number" 
-                                value={formData.propertyReallocation?.newPlot || ''} 
-                                onChange={(e) => handleFormChange('propertyReallocation', e.target.name, e.target.value)} 
-                            />
-                        </div>
-                    </Card>
+                    <PropertyReallocationAmendment 
+                        data={formData.propertyReallocation} 
+                        onChange={(field, val) => handleFormChange('propertyReallocation', field, val)} 
+                    />
                 )}
 
                 {formData.amendmentTypes.paymentPlan && (
-                    <Card title="4. Payment Plan Amendment">
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700">
-                                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Current Plan</label>
-                                <div className="text-sm font-semibold text-gray-800 dark:text-white">{formData.paymentPlanDetails?.currentPlan || 'Not Set'}</div>
-                            </div>
-                            <Select 
-                                id="newPlan" 
-                                name="newPlan"
-                                label="New Payment Plan" 
-                                value={formData.paymentPlanDetails?.newPlan || ''} 
-                                onChange={e => handleFormChange('paymentPlanDetails', 'newPlan', e.target.value)}
-                            >
-                                <option value="Outright Payment">Outright Payment</option>
-                                <option value="3-Month Installment">3-Month Installment</option>
-                                <option value="6-Month Installment">6-Month Installment</option>
-                                <option value="12-Month Installment">12-Month Installment</option>
-                            </Select>
-                        </div>
-                    </Card>
+                    <PaymentPlanAmendment 
+                        data={formData.paymentPlanDetails} 
+                        onChange={(field, val) => handleFormChange('paymentPlanDetails', field, val)} 
+                    />
                 )}
 
                 {formData.amendmentTypes.indenture && (
-                    <Card title="5. Indenture Details">
-                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                            <div className="col-span-2">
-                                <p className="text-xs text-gray-500 mb-2">Current Indenture Name: <strong>{formData.indentureDetails?.currentName}</strong></p>
-                            </div>
-                            <Input 
-                                id="newName" 
-                                name="newName"
-                                label="Name to Appear on Indenture" 
-                                value={formData.indentureDetails?.newName || ''} 
-                                onChange={(e) => handleFormChange('indentureDetails', e.target.name, e.target.value)} 
-                            />
-                            <Input 
-                                id="newAddress" 
-                                name="newAddress"
-                                label="Address to Appear on Indenture" 
-                                value={formData.indentureDetails?.newAddress || ''} 
-                                onChange={(e) => handleFormChange('indentureDetails', e.target.name, e.target.value)} 
-                            />
-                        </div>
-                    </Card>
+                    <IndentureAmendment 
+                        data={formData.indentureDetails} 
+                        onChange={(field, val) => handleFormChange('indentureDetails', field, val)} 
+                    />
                 )}
 
-                <Card title="Upload Filled Form">
-                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Please upload a scanned PDF or image of the physically signed amendment form. This is mandatory.</p>
-                     <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900">
-                        <div className="space-y-1 text-center">
-                            {scannedFormPreview ? <CheckCircleIcon className="mx-auto h-12 w-12 text-green-500" /> : <UploadIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />}
-                            <div className="flex text-sm text-gray-600 dark:text-gray-400">
-                                <label htmlFor="scanned-form-upload" className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                    <span className="px-2">{scannedFormPreview ? 'Change File' : 'Upload a file'}</span>
-                                    <input id="scanned-form-upload" name="scannedForm" type="file" className="sr-only" onChange={handleFileChange} accept="image/*,application/pdf" />
-                                </label>
-                                <p className="pl-1">or drag and drop</p>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-500">{scannedFormPreview ? 'File ready for submission.' : 'PDF, PNG, JPG up to 10MB'}</p>
-                        </div>
-                    </div>
-                    {formError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{formError}</p>}
-                </Card>
+                <UploadSection 
+                    scannedFormPreview={scannedFormPreview} 
+                    onFileChange={handleFileChange} 
+                    error={formError} 
+                />
 
-                <Card title="Office Use Only">
-                    <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                        <Input 
-                            id="approvedBy" 
-                            name="approvedBy"
-                            label="Approved By (Manager)" 
-                            value={formData.officeUse.approvedBy || ''} 
-                            onChange={e => handleFormChange('officeUse', 'approvedBy', e.target.value)} 
-                        />
-                        <Input 
-                            id="additionalFees" 
-                            name="additionalFees"
-                            label="Additional Fees (GHC)" 
-                            type="number" 
-                            value={formData.officeUse.additionalFees || ''} 
-                            onChange={e => handleFormChange('officeUse', 'additionalFees', Number(e.target.value))} 
-                        />
-                        <Select 
-                            id="status" 
-                            name="status"
-                            label="Status" 
-                            value={formData.officeUse.status} 
-                            onChange={e => handleFormChange('officeUse', 'status', e.target.value)}
-                        >
-                            <option>Pending</option>
-                            <option>Approved</option>
-                            <option>Rejected</option>
-                        </Select>
-                        <div className="sm:col-span-2">
-                            <TextArea 
-                                id="remarks" 
-                                name="remarks"
-                                label="Remarks / Actions Taken" 
-                                value={formData.officeUse.remarks || ''} 
-                                onChange={e => handleFormChange('officeUse', 'remarks', e.target.value)} 
-                            />
-                        </div>
-                    </div>
-                </Card>
+                <OfficeUseSection 
+                    data={formData.officeUse} 
+                    onChange={(field, val) => handleFormChange('officeUse', field, val)} 
+                />
 
             </form>
 

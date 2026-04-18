@@ -1,100 +1,23 @@
-
 import React, { useState, ChangeEvent, FormEvent, useEffect, useCallback, useMemo } from 'react';
 import { Client, Property } from '../types';
 import { XIcon } from './icons/XIcon';
-import { UserGroupIcon, BuildingLibraryIcon, BriefcaseIcon, CheckCircleIcon } from './icons/DummyIcons';
-import { PhoneInput } from './ui/PhoneInput';
-import { EmailInput } from './ui/EmailInput';
+import { FormData } from './client-form/types';
+import { ClientFormStepper } from './client-form/ClientFormStepper';
+import { Step1PersonalDetails } from './client-form/Step1PersonalDetails';
+import { Step2PropertyDetails } from './client-form/Step2PropertyDetails';
+import { Step3OfficeDetails } from './client-form/Step3OfficeDetails';
 
-export type FormData = {
-    // Personal
-    surname: string;
-    otherNames: string;
-    dateOfBirth: string;
-    currentAddress: string;
-    telephone: string;
-    email: string;
-    gender: string;
-    photo: string; // base64 string or URL
-    // Professional
-    placeOfWork: string;
-    profession: string;
-    position: string;
-    // Next of Kin
-    kinName: string;
-    kinAddress: string;
-    kinPhone: string;
-    kinRelationship: string;
-    kinEmail: string;
-    // Witness
-    witnessName: string;
-    witnessAddress: string;
-    witnessPhone: string;
-    // Property
-    paymentDate: string;
-    paymentMethod: 'Cash' | 'Bank Transfer' | 'MoMo' | 'Cheque' | 'Other';
-    location: string;
-    propertyType: 'Residential' | 'Commercial';
-    plotNumber: string;
-    plannedDevelopmentYear: string;
-    filledFormPdf: string | null; // base64 string or URL
-    // Indenture
-    indentureName: string;
-    indentureAddress: string;
-    // Office Use
-    salesRep: string;
-    salesManager: string;
-    accountsHead: string;
-    clerk: string;
-};
+export type { FormData };
 
 interface ClientFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (formData: FormData, files?: { photo?: File | null, pdf?: File | null }) => void;
+  onSave: (formData: FormData, files?: { photo?: File | null, pdf?: File | null }) => Promise<Client | void>;
   onSaveAndPay: (formData: FormData, files?: { photo?: File | null, pdf?: File | null }) => void;
   properties: Property[];
   editingClient?: Client | null;
+  clients: Client[];
 }
-
-const getFieldClass = (error?: string): string => {
-    const baseClass = "mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-900 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-white";
-    return error ? `${baseClass} border-red-500 dark:border-red-600` : `${baseClass} border-gray-300 dark:border-gray-600`;
-};
-
-const SmartInputField: React.FC<{ id: keyof FormData; label: string; value: string | number; onChange: (e: ChangeEvent<HTMLInputElement>) => void; onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void; error?: string; type?: string; required?: boolean; list?: string; isTouched?: boolean; }> = ({ id, label, value, onChange, onBlur, error, type = 'text', required = false, list, isTouched }) => (
-    <div className="sm:col-span-1 relative">
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}{required && <span className="text-red-500">*</span>}</label>
-        <input type={type} name={id} id={id} value={value} onChange={onChange} onBlur={onBlur} required={required} list={list} className={getFieldClass(error)} title={error || ''} />
-        {isTouched && !error && required && (
-            <CheckCircleIcon className="absolute right-3 top-[37px] w-5 h-5 text-green-500 pointer-events-none" />
-        )}
-        {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
-    </div>
-);
-
-const SmartSelectField: React.FC<{ id: keyof FormData; label: string; value: string; onChange: (e: ChangeEvent<HTMLSelectElement>) => void; onBlur?: (e: React.FocusEvent<HTMLSelectElement>) => void; children: React.ReactNode; error?: string; required?: boolean; isTouched?: boolean; }> = ({ id, label, value, onChange, onBlur, children, error, required = false, isTouched }) => (
-     <div className="sm:col-span-1 relative">
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}{required && <span className="text-red-500">*</span>}</label>
-        <select id={id} name={id} value={value} onChange={onChange} onBlur={onBlur} required={required} className={getFieldClass(error)} title={error || ''}>
-            {children}
-        </select>
-        {isTouched && !error && required && (
-            <CheckCircleIcon className="absolute right-8 top-[37px] w-5 h-5 text-green-500 pointer-events-none" />
-        )}
-        {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
-    </div>
-);
-
-
-const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{title}</h3>
-        <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-            {children}
-        </div>
-    </div>
-);
 
 const initialFormData: FormData = {
     surname: '',
@@ -121,6 +44,7 @@ const initialFormData: FormData = {
     location: '',
     propertyType: 'Residential',
     plotNumber: '',
+    numberOfPlots: '1',
     plannedDevelopmentYear: new Date().getFullYear().toString(),
     filledFormPdf: null,
     indentureName: '',
@@ -129,15 +53,81 @@ const initialFormData: FormData = {
     salesManager: '',
     accountsHead: '',
     clerk: '',
+    price: '',
 };
 
-const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSaveAndPay, properties, editingClient }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSaveAndPay, properties, editingClient, clients }) => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [photoFile, setPhotoFile] = useState<File | null>(null);
     const [touched, setTouched] = useState<Partial<Record<keyof FormData, boolean>>>({});
+    const [isProcessing, setIsProcessing] = useState(false);
+    
+    // Authority Base Price
+    const basePrice = useMemo(() => {
+        const match = properties.find(p => p.location === formData.location);
+        return match ? match.price : 0;
+    }, [formData.location, properties]);
+
+    // Availability Cross-Reference
+    const takenPlots = useMemo(() => {
+        const taken = new Set<string>();
+        clients.forEach(c => {
+            if (c.plot && c.plot !== 'N/A') {
+                c.plot.split(',').forEach(p => taken.add(p.trim().toUpperCase()));
+            }
+        });
+        return taken;
+    }, [clients]);
+
+    const availablePlotsForLocation = useMemo(() => {
+        const prop = properties.find(p => p.location === formData.location);
+        if (!prop || !prop.inventory) return [];
+        
+        const allPlots: { plotNumber: string; isTaken: boolean }[] = [];
+        prop.inventory.forEach((inv: any) => {
+            const prefix = inv.zone || 'P1';
+            for (let i = 1; i <= inv.count; i++) {
+                const pNum = `${prefix}-${i}`;
+                allPlots.push({
+                    plotNumber: pNum,
+                    isTaken: takenPlots.has(pNum) && (!editingClient || !editingClient.plot.split(',').map(p => p.trim().toUpperCase()).includes(pNum))
+                });
+            }
+        });
+        return allPlots;
+    }, [formData.location, properties, takenPlots, editingClient]);
+
+    // Handle Plot Selection Logic
+    const handlePlotsChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        const num = parseInt(value);
+        setFormData(prev => ({ ...prev, numberOfPlots: value }));
+        setTouched(prev => ({ ...prev, numberOfPlots: true }));
+        if (!formData.location) return;
+        if (isNaN(num) || num <= 0) return;
+        const calculatedPrice = basePrice * num;
+        setFormData(prev => ({ ...prev, numberOfPlots: value, price: calculatedPrice.toString() }));
+    };
+
+    const handleLocationChange = (e: ChangeEvent<HTMLSelectElement>) => {
+        const loc = e.target.value;
+        const match = properties.find(p => p.location === loc);
+        const pCount = parseInt(formData.numberOfPlots) || 1;
+        const priceValue = match ? (match.price * pCount).toString() : '';
+        setFormData(prev => ({ ...prev, location: loc, price: priceValue, plotNumber: '' }));
+    };
+
+    const togglePlotSelection = (plotNumber: string) => {
+        const current = formData.plotNumber.split(',').map(x => x.trim()).filter(Boolean);
+        const updated = current.includes(plotNumber) 
+            ? current.filter(x => x !== plotNumber) 
+            : [...current, plotNumber];
+        setFormData(prev => ({ ...prev, plotNumber: updated.join(', ') }));
+        setTouched(prev => ({ ...prev, plotNumber: true }));
+    };
 
      useEffect(() => {
         if (isOpen && editingClient) {
@@ -145,7 +135,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                 surname: editingClient.surname,
                 otherNames: editingClient.otherNames,
                 dateOfBirth: editingClient.dateOfBirth || '',
-                currentAddress: editingClient.location, // Assuming this is current addr for now
+                currentAddress: editingClient.location,
                 telephone: editingClient.phone,
                 email: editingClient.email,
                 gender: editingClient.gender || 'Other',
@@ -166,6 +156,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                 location: editingClient.location,
                 propertyType: editingClient.propertyType || 'Residential',
                 plotNumber: editingClient.plot,
+                numberOfPlots: (editingClient as any).numberOfPlots || '1',
                 plannedDevelopmentYear: editingClient.plannedDevelopmentYear || new Date().getFullYear().toString(),
                 filledFormPdf: editingClient.filledFormPdf,
                 indentureName: editingClient.indenture.name,
@@ -174,6 +165,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                 salesManager: editingClient.officeUse.salesManager,
                 accountsHead: editingClient.officeUse.accountsHead,
                 clerk: editingClient.officeUse.clerk,
+                price: editingClient.payment.total.toString(),
             });
             setPhotoPreview(editingClient.photo || null);
             setTouched({});
@@ -184,51 +176,19 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
 
     const validate = useCallback((): Partial<Record<keyof FormData, string>> => {
         const errors: Partial<Record<keyof FormData, string>> = {};
-        const requiredFields: (keyof FormData)[] = ['surname', 'otherNames', 'currentAddress', 'telephone', 'kinName', 'kinPhone', 'witnessName', 'witnessPhone', 'witnessAddress', 'location', 'plotNumber', 'indentureName', 'indentureAddress', 'salesRep', 'salesManager', 'accountsHead', 'clerk', 'paymentDate'];
-        
+        // Critical fields required for save
+        const requiredFields: (keyof FormData)[] = ['surname', 'otherNames', 'telephone', 'location', 'plotNumber'];
         requiredFields.forEach(field => {
             if (!formData[field]) errors[field] = 'This field cannot be left blank.';
         });
-
-        const textFields: (keyof FormData)[] = ['surname', 'otherNames', 'kinName', 'witnessName', 'salesRep', 'salesManager', 'accountsHead', 'clerk'];
-        textFields.forEach(field => {
-            const value = formData[field];
-            if (value) {
-                if (!/^[A-Za-z\s'-]+$/.test(value)) errors[field] = 'Only letters, spaces, hyphens, and apostrophes are allowed.';
-                if (/(.)\1{3,}/.test(value)) errors[field] = 'Please provide a valid, readable entry.';
-                if (value.length < 2) errors[field] = 'Entry must be at least 2 characters.';
-            }
-        });
-        
-        const addressFields: (keyof FormData)[] = ['currentAddress', 'witnessAddress', 'indentureAddress', 'location'];
-        addressFields.forEach(field => {
-            const value = formData[field];
-            if(value && (!/[a-zA-Z]/.test(value) || !/\s/.test(value))){
-                errors[field] = 'Address must contain letters and at least one space.';
-            }
-        });
-
-        if (formData.email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(formData.email)) {
-            errors.email = 'Please enter a valid email address format.';
+        if (formData.numberOfPlots && (parseInt(formData.numberOfPlots) <= 0 || isNaN(parseInt(formData.numberOfPlots)))) {
+            errors.numberOfPlots = 'Number of plots must be a positive number.';
         }
-
-        const phoneFields: (keyof FormData)[] = ['telephone', 'kinPhone', 'witnessPhone'];
-        phoneFields.forEach(field => {
-            if (formData[field] && formData[field].length < 10) {
-                errors[field] = 'Please provide a valid phone number with country code.';
-            }
-        });
-
-        if (formData.plotNumber && !/^[A-Z]{2,}-\d+/.test(formData.plotNumber)) {
-            errors.plotNumber = 'Plot number must follow a format like ELH-101.';
-        }
-
         return errors;
     }, [formData]);
 
     const errors = useMemo(() => validate(), [validate]);
-    const isFormValid = Object.keys(errors).length === 0;
-
+    
     const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name } = e.target as { name: keyof FormData };
         setTouched(prev => ({ ...prev, [name]: true }));
@@ -274,54 +234,25 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
         }
     };
 
-    const step1Fields: (keyof FormData)[] = ['surname', 'otherNames', 'currentAddress', 'telephone', 'kinName', 'kinPhone', 'witnessName', 'witnessPhone', 'witnessAddress'];
-    const step2Fields: (keyof FormData)[] = ['location', 'plotNumber', 'paymentDate', 'indentureName', 'indentureAddress'];
-
     const handleNext = () => {
-        const currentStepFields = step === 1 ? step1Fields : step2Fields;
-        let isStepValid = true;
-        const fieldsToTouch: Partial<Record<keyof FormData, boolean>> = {};
-        
-        currentStepFields.forEach(field => {
-            fieldsToTouch[field] = true;
-            if (errors[field]) {
-                isStepValid = false;
-            }
-        });
-
-        if (!isStepValid) {
-            setTouched(prev => ({ ...prev, ...fieldsToTouch }));
-            alert('Please complete all required fields correctly before continuing.');
-            return;
-        }
         setStep(prev => Math.min(prev + 1, 3));
     };
+
     const handleBack = () => setStep(prev => Math.max(prev - 1, 1));
     
-    const handleSubmit = (e: FormEvent) => {
+    const handleAddPaymentDetails = async (e: FormEvent) => {
         e.preventDefault();
-        if (!isFormValid) {
-            const allFields = Object.keys(initialFormData) as (keyof FormData)[];
-            const allTouched = allFields.reduce((acc, key) => ({...acc, [key]: true}), {});
-            setTouched(allTouched);
-            alert("Some fields contain invalid or incomplete data. Please correct them before saving.");
+        if (!formData.surname || !formData.otherNames || !formData.location || !formData.plotNumber) {
+            alert("Critical details (Name, Location, Plot) are required to finish registration.");
             return;
         }
-        onSave(formData, { photo: photoFile, pdf: pdfFile });
-        resetForm();
-    };
-
-    const handleSubmitAndPay = (e: FormEvent) => {
-        e.preventDefault();
-         if (!isFormValid) {
-            const allFields = Object.keys(initialFormData) as (keyof FormData)[];
-            const allTouched = allFields.reduce((acc, key) => ({...acc, [key]: true}), {});
-            setTouched(allTouched);
-            alert("Some fields contain invalid or incomplete data. Please correct them before saving.");
-            return;
+        setIsProcessing(true);
+        try {
+            onSaveAndPay(formData, { photo: photoFile, pdf: pdfFile });
+        } catch (error) {
+            console.error("Save failed:", error);
+            setIsProcessing(false);
         }
-        onSaveAndPay(formData, { photo: photoFile, pdf: pdfFile });
-        resetForm();
     };
 
     const resetForm = () => {
@@ -331,15 +262,12 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
         setPhotoFile(null);
         setStep(1);
         setTouched({});
+        setIsProcessing(false);
     };
 
     if (!isOpen) return null;
 
-    const steps = [
-        { name: 'Client Information', icon: <UserGroupIcon className="w-5 h-5" /> },
-        { name: 'Acquisition Details', icon: <BuildingLibraryIcon className="w-5 h-5" /> },
-        { name: 'Office Details', icon: <BriefcaseIcon className="w-5 h-5" /> },
-    ];
+    const isPropertyAvailable = properties && properties.length > 0;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog">
@@ -351,198 +279,69 @@ const ClientForm: React.FC<ClientFormProps> = ({ isOpen, onClose, onSave, onSave
                     </button>
                 </div>
 
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <nav aria-label="Progress">
-                         <ol role="list" className="flex items-center">
-                            {steps.map((s, stepIdx) => (
-                                <li key={s.name} className={`relative ${stepIdx !== steps.length - 1 ? 'pr-8 sm:pr-20' : ''}`}>
-                                    {step > stepIdx + 1 ? (
-                                        <>
-                                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                            <div className="h-0.5 w-full bg-blue-600" />
-                                        </div>
-                                        <div className="relative w-8 h-8 flex items-center justify-center bg-blue-600 rounded-full text-white">
-                                            {s.icon}
-                                        </div>
-                                        </>
-                                    ) : step === stepIdx + 1 ? (
-                                        <>
-                                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                            <div className="h-0.5 w-full bg-gray-200 dark:bg-gray-700" />
-                                        </div>
-                                        <div className="relative w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border-2 border-blue-600 rounded-full text-blue-600">
-                                           {s.icon}
-                                        </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                            <div className="h-0.5 w-full bg-gray-200 dark:bg-gray-700" />
-                                        </div>
-                                        <div className="relative w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full text-gray-400">
-                                            {s.icon}
-                                        </div>
-                                        </>
-                                    )}
-                                     <span className="absolute -bottom-6 text-xs font-semibold text-center w-24 -left-8 text-gray-600 dark:text-gray-400">{s.name}</span>
-                                </li>
-                            ))}
-                        </ol>
-                    </nav>
-                </div>
+                <ClientFormStepper currentStep={step} />
                 
-                <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-grow">
+                <div className="p-6 overflow-y-auto flex-grow">
                     {step === 1 && (
-                        <div>
-                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                <div className="sm:col-span-2">
-                                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Personal Information</h3>
-                                    <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-                                        <SmartInputField id="surname" label="Surname" value={formData.surname} onChange={handleChange} onBlur={handleBlur} required error={touched.surname ? errors.surname : undefined} isTouched={touched.surname} />
-                                        <SmartInputField id="otherNames" label="Other Names" value={formData.otherNames} onChange={handleChange} onBlur={handleBlur} required error={touched.otherNames ? errors.otherNames : undefined} isTouched={touched.otherNames}/>
-                                        <SmartInputField id="dateOfBirth" label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={handleChange} onBlur={handleBlur} error={touched.dateOfBirth ? errors.dateOfBirth : undefined} isTouched={touched.dateOfBirth} />
-                                         <SmartSelectField id="gender" label="Gender" value={formData.gender} onChange={handleChange} onBlur={handleBlur} error={touched.gender ? errors.gender : undefined} isTouched={touched.gender}>
-                                            <option>Male</option>
-                                            <option>Female</option>
-                                            <option>Other</option>
-                                        </SmartSelectField>
-                                        <div className="sm:col-span-2">
-                                            <SmartInputField id="currentAddress" label="Current Address" value={formData.currentAddress} onChange={handleChange} onBlur={handleBlur} required error={touched.currentAddress ? errors.currentAddress : undefined} isTouched={touched.currentAddress} />
-                                        </div>
-                                        <PhoneInput id="telephone" name="telephone" label="Telephone" value={formData.telephone} onChange={handlePhoneChange('telephone')} required error={touched.telephone ? errors.telephone : undefined} />
-                                        <EmailInput id="email" name="email" label="Email Address" value={formData.email} onChange={(val) => setFormData(prev => ({...prev, email: val}))} error={touched.email ? errors.email : undefined} />
-                                    </div>
-                                </div>
-                                <div className="sm:col-span-1">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Passport-sized Photo</label>
-                                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md">
-                                        <div className="space-y-1 text-center">
-                                            {photoPreview ? (
-                                                <img src={photoPreview} alt="Client" className="mx-auto h-24 w-24 object-cover rounded-md" />
-                                            ) : (
-                                                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                            )}
-                                            <div className="flex text-sm text-gray-600 dark:text-gray-400">
-                                                <label htmlFor="photo-upload" className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                                    <span>{photoFile ? 'Change photo' : 'Upload a file'}</span>
-                                                    <input id="photo-upload" name="photo" type="file" className="sr-only" onChange={handlePhotoChange} accept=".jpg,.jpeg,.png" />
-                                                </label>
-                                                <p className="pl-1">or drag and drop</p>
-                                            </div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 10MB</p>
-                                        </div>
-                                    </div>
-                                </div>
-                           </div>
-
-                           <FormSection title="Professional Information">
-                               <SmartInputField id="placeOfWork" label="Place of Work" value={formData.placeOfWork} onChange={handleChange} onBlur={handleBlur} error={touched.placeOfWork ? errors.placeOfWork : undefined} isTouched={touched.placeOfWork}/>
-                               <SmartInputField id="profession" label="Profession" value={formData.profession} onChange={handleChange} onBlur={handleBlur} error={touched.profession ? errors.profession : undefined} isTouched={touched.profession}/>
-                               <SmartInputField id="position" label="Position/Rank" value={formData.position} onChange={handleChange} onBlur={handleBlur} error={touched.position ? errors.position : undefined} isTouched={touched.position}/>
-                           </FormSection>
-
-                           <FormSection title="Next of Kin Details">
-                               <SmartInputField id="kinName" label="Name" value={formData.kinName} onChange={handleChange} onBlur={handleBlur} required error={touched.kinName ? errors.kinName : undefined} isTouched={touched.kinName}/>
-                               <SmartInputField id="kinRelationship" label="Relationship with Buyer" value={formData.kinRelationship} onChange={handleChange} onBlur={handleBlur} error={touched.kinRelationship ? errors.kinRelationship : undefined} isTouched={touched.kinRelationship}/>
-                               <PhoneInput id="kinPhone" name="kinPhone" label="Telephone Number" value={formData.kinPhone} onChange={handlePhoneChange('kinPhone')} required error={touched.kinPhone ? errors.kinPhone : undefined} />
-                               <EmailInput id="kinEmail" name="kinEmail" label="Email Address" value={formData.kinEmail} onChange={(val) => setFormData(prev => ({...prev, kinEmail: val}))} error={touched.kinEmail ? errors.kinEmail : undefined} />
-                               <div className="sm:col-span-2">
-                                    <SmartInputField id="kinAddress" label="Address" value={formData.kinAddress} onChange={handleChange} onBlur={handleBlur} error={touched.kinAddress ? errors.kinAddress : undefined} isTouched={touched.kinAddress}/>
-                               </div>
-                           </FormSection>
-
-                           <FormSection title="Witness Details">
-                               <SmartInputField id="witnessName" label="Name" value={formData.witnessName} onChange={handleChange} onBlur={handleBlur} required error={touched.witnessName ? errors.witnessName : undefined} isTouched={touched.witnessName}/>
-                               <PhoneInput id="witnessPhone" name="witnessPhone" label="Telephone Number" value={formData.witnessPhone} onChange={handlePhoneChange('witnessPhone')} required error={touched.witnessPhone ? errors.witnessPhone : undefined} />
-                               <div className="sm:col-span-2">
-                                <SmartInputField id="witnessAddress" label="Address" value={formData.witnessAddress} onChange={handleChange} onBlur={handleBlur} required error={touched.witnessAddress ? errors.witnessAddress : undefined} isTouched={touched.witnessAddress}/>
-                               </div>
-                           </FormSection>
-                        </div>
+                        <Step1PersonalDetails 
+                            formData={formData}
+                            touched={touched}
+                            errors={errors}
+                            handleChange={handleChange}
+                            handleBlur={handleBlur}
+                            handlePhoneChange={handlePhoneChange}
+                            handlePhotoChange={handlePhotoChange}
+                            setFormData={setFormData}
+                            photoPreview={photoPreview}
+                            photoFile={photoFile}
+                        />
                     )}
                     {step === 2 && (
-                        <div>
-                             <FormSection title="Property & Transaction Details">
-                                <SmartInputField id="location" label="Location" value={formData.location} onChange={handleChange} onBlur={handleBlur} required list="property-locations" error={touched.location ? errors.location : undefined} isTouched={touched.location}/>
-                                <datalist id="property-locations">
-                                    {properties.map(p => <option key={p.id} value={p.location} />)}
-                                </datalist>
-                                <SmartInputField id="plotNumber" label="Plot Number(s)" value={formData.plotNumber} onChange={handleChange} onBlur={handleBlur} required error={touched.plotNumber ? errors.plotNumber : undefined} isTouched={touched.plotNumber}/>
-                                <SmartSelectField id="propertyType" label="Property Type" value={formData.propertyType} onChange={handleChange} onBlur={handleBlur} error={touched.propertyType ? errors.propertyType : undefined} isTouched={touched.propertyType}>
-                                    <option>Residential</option>
-                                    <option>Commercial</option>
-                                </SmartSelectField>
-                                <SmartInputField id="plannedDevelopmentYear" label="Year of Planned Development" type="number" value={formData.plannedDevelopmentYear} onChange={handleChange} onBlur={handleBlur} error={touched.plannedDevelopmentYear ? errors.plannedDevelopmentYear : undefined} isTouched={touched.plannedDevelopmentYear}/>
-                                <SmartInputField id="paymentDate" label="Date of Initial Payment" type="date" value={formData.paymentDate} onChange={handleChange} onBlur={handleBlur} required error={touched.paymentDate ? errors.paymentDate : undefined} isTouched={touched.paymentDate}/>
-                                <SmartSelectField id="paymentMethod" label="Initial Payment Method" value={formData.paymentMethod} onChange={handleChange} onBlur={handleBlur} error={touched.paymentMethod ? errors.paymentMethod : undefined} isTouched={touched.paymentMethod}>
-                                    <option>Cash</option>
-                                    <option>Bank Transfer</option>
-                                    <option>MoMo</option>
-                                    <option>Cheque</option>
-                                    <option>Other</option>
-                                </SmartSelectField>
-                                <div className={`sm:col-span-2 p-3 rounded-md border relative ${touched.filledFormPdf && errors.filledFormPdf ? 'border-red-500 dark:border-red-600' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
-                                    <label htmlFor="filledFormPdf" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Filled Client Form <span className="text-gray-400 text-xs">(Optional)</span></label>
-                                    <div className="mt-1 flex items-center">
-                                        <label htmlFor="filledFormPdf-upload" className="relative cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                            <span>{pdfFile ? pdfFile.name : (formData.filledFormPdf ? 'File uploaded' : 'Select file')}</span>
-                                            <input id="filledFormPdf-upload" name="filledFormPdf" type="file" className="sr-only" onChange={handlePdfChange} accept="application/pdf" />
-                                        </label>
-                                        {(pdfFile || formData.filledFormPdf) && <span className="ml-3 text-sm text-green-600">✔ PDF selected</span>}
-                                    </div>
-                                    {touched.filledFormPdf && errors.filledFormPdf && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.filledFormPdf}</p>}
-                                    {touched.filledFormPdf && !errors.filledFormPdf && (
-                                        <CheckCircleIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500 pointer-events-none" />
-                                    )}
-                                </div>
-                            </FormSection>
-
-                            <FormSection title="What Name & Address Do You Want to Appear on Your Indenture?">
-                                <SmartInputField id="indentureName" label="Full Name" value={formData.indentureName} onChange={handleChange} onBlur={handleBlur} required error={touched.indentureName ? errors.indentureName : undefined} isTouched={touched.indentureName}/>
-                                <SmartInputField id="indentureAddress" label="Postal Address" value={formData.indentureAddress} onChange={handleChange} onBlur={handleBlur} required error={touched.indentureAddress ? errors.indentureAddress : undefined} isTouched={touched.indentureAddress}/>
-                            </FormSection>
-                        </div>
+                        <Step2PropertyDetails 
+                            formData={formData}
+                            touched={touched}
+                            errors={errors}
+                            handleChange={handleChange}
+                            handleBlur={handleBlur}
+                            handleLocationChange={handleLocationChange}
+                            handlePlotsChange={handlePlotsChange}
+                            handlePdfChange={handlePdfChange}
+                            togglePlotSelection={togglePlotSelection}
+                            properties={properties}
+                            availablePlotsForLocation={availablePlotsForLocation}
+                            isPropertyAvailable={isPropertyAvailable}
+                            pdfFile={pdfFile}
+                        />
                     )}
                     {step === 3 && (
-                        <div>
-                             <FormSection title="For Office Use Only">
-                                <SmartInputField id="salesRep" label="Intermediary Sales Rep" value={formData.salesRep} onChange={handleChange} onBlur={handleBlur} required error={touched.salesRep ? errors.salesRep : undefined} isTouched={touched.salesRep}/>
-                                <SmartInputField id="salesManager" label="Approving Sales Manager Name" value={formData.salesManager} onChange={handleChange} onBlur={handleBlur} required error={touched.salesManager ? errors.salesManager : undefined} isTouched={touched.salesManager}/>
-                                <SmartInputField id="accountsHead" label="Approval Accounts Head Name" value={formData.accountsHead} onChange={handleChange} onBlur={handleBlur} required error={touched.accountsHead ? errors.accountsHead : undefined} isTouched={touched.accountsHead}/>
-                                <SmartInputField id="clerk" label="Receiving Clerk on Duty Name" value={formData.clerk} onChange={handleChange} onBlur={handleBlur} required error={touched.clerk ? errors.clerk : undefined} isTouched={touched.clerk}/>
-                            </FormSection>
-                        </div>
+                        <Step3OfficeDetails 
+                            formData={formData}
+                            touched={touched}
+                            errors={errors}
+                            handleChange={handleChange}
+                            handleBlur={handleBlur}
+                        />
                     )}
-                </form>
+                </div>
 
                 <div className="flex justify-between items-center p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg">
-                    <div>
-                        {step > 1 && (
-                            <button type="button" onClick={handleBack} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                Back
-                            </button>
-                        )}
-                    </div>
+                    <div>{step > 1 && <button type="button" onClick={handleBack} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 transition-colors">Back</button>}</div>
                     <div>
                         {step < 3 ? (
-                             <button type="button" onClick={handleNext} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                                Next: {step === 1 ? 'Acquisition Details' : 'Office Details'}
-                            </button>
+                             <button type="button" onClick={handleNext} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Next Step</button>
                         ) : (
-                            <div className="flex items-center gap-4">
-                                <button type="submit" onClick={handleSubmit} disabled={!isFormValid} className="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                    Save Client
-                                </button>
-                                {!editingClient && (
-                                <button type="button" onClick={handleSubmitAndPay} disabled={!isFormValid} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                    Add Payment Information
-                                </button>
-                                )}
-                            </div>
+                            <button type="button" onClick={handleAddPaymentDetails} disabled={isProcessing} className="bg-blue-600 text-white font-black uppercase tracking-widest py-2.5 px-8 rounded-lg hover:bg-blue-700 transition-all shadow-lg disabled:bg-gray-400">
+                                {isProcessing ? 'Saving...' : 'Finish Registration'}
+                            </button>
                         )}
                     </div>
                 </div>
             </div>
+            <style>{`
+                .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+                .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; }
+            `}</style>
         </div>
     );
 };

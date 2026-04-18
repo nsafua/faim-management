@@ -6,3 +6,4 @@ export * from './finance';
 export * from './marketing';
 export * from './realEstate';
 export * from './system';
+export * from './leave';

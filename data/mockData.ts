@@ -13,7 +13,6 @@ export const COMPANY_SETTINGS: CompanySettings = {
 
 export const ROLES: Role[] = [
     { id: 'CEO', name: 'CEO', description: 'Overall management and strategic decisions.' },
-// ... rest of the file remains unchanged
     { id: 'Administrator', name: 'Administrator', description: 'Handles system administration and high-level operations.' },
     { id: 'Front Desk Executive', name: 'Front Desk Executive', description: 'Manages client interactions and front desk tasks.' },
     { id: 'Chief Accountant', name: 'Chief Accountant', description: 'Oversees all financial activities.' },
@@ -51,6 +50,8 @@ export const PROPERTIES: Property[] = [
 export const CLIENTS: Client[] = [
     {
         id: 1,
+        // FIX: Added required clientType property to mock data
+        clientType: 'Individual',
         name: 'John Doe',
         surname: 'Doe',
         otherNames: 'John',
@@ -61,7 +62,7 @@ export const CLIENTS: Client[] = [
         location: 'East Legon Hills',
         plot: 'ELH-101',
         status: 'Active Client',
-        stage: 'PAYM',
+        stage: 'PFI',
         payment: { total: 225000, paid: 150000, balance: 75000, dueDate: '2024-09-01', planType: '3-Month Installment', promoDetails: '10% discount applied', paymentHistory: [], installments: [] },
         interactions: [],
         witness: { name: 'Witness One', address: 'Accra', phone: '0551112222' },
@@ -79,10 +80,14 @@ export const INVOICES: Invoice[] = [
 ];
 
 export const MILESTONES: Milestone[] = [
-    { acronym: 'REG', label: 'Registration', progress: 10 },
-    { acronym: 'PAYM', label: 'Payment', progress: 40 },
-    { acronym: 'IND', label: 'Indenture', progress: 70 },
-    { acronym: 'COMP', label: 'Completed', progress: 100 },
+    { acronym: 'SFR', label: 'Form Received', progress: 10 },
+    { acronym: 'PLR', label: 'Land Payment', progress: 25 },
+    { acronym: 'PFI', label: 'Doc Payment', progress: 40 },
+    { acronym: '3MP', label: 'Processing', progress: 55 },
+    { acronym: 'IR', label: 'Doc Ready', progress: 70 },
+    { acronym: 'DPU', label: 'Picked Up', progress: 85 },
+    { acronym: 'CPD', label: 'Final Handover', progress: 95 },
+    { acronym: 'ACA', label: 'Addressed', progress: 100 },
 ];
 
 export const ACTIVITY_LOGS: ActivityLog[] = [];
@@ -107,62 +112,51 @@ export const APP_MODULES: AppModule[] = [
     { id: 'Dashboard', name: 'Dashboard' },
     { id: 'Clients', name: 'Client List' },
     { id: 'Account Management', name: 'Account Management' },
-    { id: 'Promotions', name: 'Promotions' },
-    { id: 'Team', name: 'Team Menu' },
+    { id: 'Team', name: 'Team' },
     { id: 'Leads Management', name: 'Leads Management' },
+    { id: 'Internal Mailing', name: 'Internal Mailing' },
+    { id: 'Promotions', name: 'Promotions' },
     { id: 'Administration', name: 'Administration' },
     { id: 'CEO Hub', name: 'CEO Hub' },
     { id: 'Settings', name: 'Settings' },
 ];
 
 export const ROLE_PERMISSIONS: RolePermission[] = [
-    // 1. CEO (Full Access)
     ...APP_MODULES.map(m => ({ roleId: 'CEO', moduleId: m.id as AppModuleName, permissions: { view: true, create: true, edit: true, delete: true, approve: true } })),
-    
-    // 2. Administrator (Full Access except CEO Hub restrictions)
     ...APP_MODULES.map(m => ({ roleId: 'Administrator', moduleId: m.id as AppModuleName, permissions: { view: true, create: true, edit: true, delete: true, approve: m.id === 'CEO Hub' ? false : true } })),
-
-    // 3. Front Desk Executive
     { roleId: 'Front Desk Executive', moduleId: 'Dashboard', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
     { roleId: 'Front Desk Executive', moduleId: 'Clients', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
-    { roleId: 'Front Desk Executive', moduleId: 'Account Management', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, // View Only to check status
+    { roleId: 'Front Desk Executive', moduleId: 'Account Management', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, 
+    { roleId: 'Front Desk Executive', moduleId: 'Team', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
+    { roleId: 'Front Desk Executive', moduleId: 'Internal Mailing', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
     { roleId: 'Front Desk Executive', moduleId: 'Promotions', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Front Desk Executive', moduleId: 'Team', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, // Calendar/Events
-    { roleId: 'Front Desk Executive', moduleId: 'Leads Management', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
-    { roleId: 'Front Desk Executive', moduleId: 'Administration', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, // Limited view possibly
+    { roleId: 'Front Desk Executive', moduleId: 'Administration', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, 
     { roleId: 'Front Desk Executive', moduleId: 'CEO Hub', permissions: { view: false, create: false, edit: false, delete: false, approve: false } },
     { roleId: 'Front Desk Executive', moduleId: 'Settings', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-
-    // 4. Chief Accountant
     { roleId: 'Chief Accountant', moduleId: 'Dashboard', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
     { roleId: 'Chief Accountant', moduleId: 'Clients', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Chief Accountant', moduleId: 'Account Management', permissions: { view: true, create: true, edit: true, delete: true, approve: true } }, // Full control here
+    { roleId: 'Chief Accountant', moduleId: 'Account Management', permissions: { view: true, create: true, edit: true, delete: true, approve: true } }, 
+    { roleId: 'Chief Accountant', moduleId: 'Team', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
+    { roleId: 'Chief Accountant', moduleId: 'Internal Mailing', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
     { roleId: 'Chief Accountant', moduleId: 'Promotions', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Chief Accountant', moduleId: 'Team', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Chief Accountant', moduleId: 'Leads Management', permissions: { view: false, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Chief Accountant', moduleId: 'Administration', permissions: { view: true, create: false, edit: true, delete: false, approve: false } }, // Access to HR/Payroll if needed
-    { roleId: 'Chief Accountant', moduleId: 'CEO Hub', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, // View Reports
+    { roleId: 'Chief Accountant', moduleId: 'Administration', permissions: { view: true, create: false, edit: true, delete: false, approve: false } }, 
+    { roleId: 'Chief Accountant', moduleId: 'CEO Hub', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, 
     { roleId: 'Chief Accountant', moduleId: 'Settings', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-
-    // 5. Head of Sales
     { roleId: 'Head of Sales', moduleId: 'Dashboard', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
     { roleId: 'Head of Sales', moduleId: 'Clients', permissions: { view: true, create: true, edit: true, delete: true, approve: true } },
     { roleId: 'Head of Sales', moduleId: 'Account Management', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Head of Sales', moduleId: 'Promotions', permissions: { view: true, create: true, edit: true, delete: true, approve: true } },
-    { roleId: 'Head of Sales', moduleId: 'Team', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
+    { roleId: 'Head of Sales', moduleId: 'Team', permissions: { view: true, create: true, edit: true, delete: true, approve: true } },
     { roleId: 'Head of Sales', moduleId: 'Leads Management', permissions: { view: true, create: true, edit: true, delete: true, approve: true } },
+    { roleId: 'Head of Sales', moduleId: 'Internal Mailing', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
+    { roleId: 'Head of Sales', moduleId: 'Promotions', permissions: { view: true, create: true, edit: true, delete: true, approve: true } },
     { roleId: 'Head of Sales', moduleId: 'Administration', permissions: { view: false, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Head of Sales', moduleId: 'CEO Hub', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, // View Sales Reports
+    { roleId: 'Head of Sales', moduleId: 'CEO Hub', permissions: { view: true, create: false, edit: false, delete: false, approve: false } }, 
     { roleId: 'Head of Sales', moduleId: 'Settings', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-
-    // 6. Sales Representative
     { roleId: 'Sales Representative', moduleId: 'Dashboard', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
     { roleId: 'Sales Representative', moduleId: 'Clients', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
-    { roleId: 'Sales Representative', moduleId: 'Account Management', permissions: { view: false, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Sales Representative', moduleId: 'Promotions', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Sales Representative', moduleId: 'Team', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
+    { roleId: 'Sales Representative', moduleId: 'Team', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
     { roleId: 'Sales Representative', moduleId: 'Leads Management', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
-    { roleId: 'Sales Representative', moduleId: 'Administration', permissions: { view: false, create: false, edit: false, delete: false, approve: false } },
-    { roleId: 'Sales Representative', moduleId: 'CEO Hub', permissions: { view: false, create: false, edit: false, delete: false, approve: false } },
+    { roleId: 'Sales Representative', moduleId: 'Internal Mailing', permissions: { view: true, create: true, edit: true, delete: false, approve: false } },
+    { roleId: 'Sales Representative', moduleId: 'Promotions', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
     { roleId: 'Sales Representative', moduleId: 'Settings', permissions: { view: true, create: false, edit: false, delete: false, approve: false } },
 ];

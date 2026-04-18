@@ -1,5 +1,63 @@
-
 import { Payment, Commission } from './finance';
+
+export type ClientType = 'Individual' | 'Corporate/Group';
+export type PaymentTrackingMode = 'Group Ledger' | 'Individual Member' | 'Mixed';
+export type AllocationStatus = 'RESERVED_NOT_ALLOCATED' | 'ALLOCATED';
+export type RefundStatus = 'No Refund' | 'Refund Requested' | 'Refund Ongoing' | 'Refund Completed';
+
+export interface RefundRecord {
+    id: string;
+    clientId: number;
+    reason: string;
+    channel: 'Bank Transfer' | 'Mobile Money' | 'Cheque' | 'Other';
+    otherCosts: number;
+    instalmentPeriod: number;
+    withholdingApplied: boolean;
+    withholdingAmount: number;
+    totalPaidAtRequest: number;
+    refundableAmount: number;
+    outstandingRefundBalance: number;
+    signedFormUrl: string;
+    refundLetterUrl: string;
+    status: RefundStatus;
+    requestedBy: string;
+    requestedByRole: string;
+    timestamp: string;
+}
+
+export interface RefundTransaction {
+    id: string;
+    refundId: string;
+    clientId: number;
+    amount: number;
+    date: string;
+    channel: string;
+    reference: string;
+    notes?: string;
+    enteredBy: string;
+    timestamp: string;
+}
+
+export interface RefundPlan {
+    totalAmount: number;
+    schedulePattern: string;
+    startDate: string;
+    endDate: string;
+    isCompleted: boolean;
+    isCancelled?: boolean;
+    createdAt: string;
+    createdBy: string;
+    completedAt?: string;
+    closedBy?: string;
+}
+
+export interface MilestoneRecord {
+    id?: string;
+    clientId: number;
+    milestoneCode: 'SFR' | 'PLR' | 'PFI' | '3MP' | 'IR' | 'DPU' | 'CPD' | 'ACA';
+    dateCompleted: string;
+    notes?: string;
+}
 
 export interface Interaction {
     id: number;
@@ -41,10 +99,16 @@ export interface Documentation {
     collectedDate?: string;
     collectedBy?: string;
     notes?: string;
+    pickupDetails?: {
+        finalPickupDate: string;
+        pickupPersonName: string;
+        idCardImageUrl: string;
+    };
 }
 
 export interface Client {
     id: number;
+    clientType: ClientType;
     name: string;
     surname: string;
     otherNames: string;
@@ -65,6 +129,13 @@ export interface Client {
         position: string;
     };
     status: 'Active Client' | 'Refunded' | 'Reallocated';
+    refundStatus?: RefundStatus;
+    allocationStatus?: AllocationStatus;
+    paidPercent?: number;
+    isQualified?: boolean;
+    qualifiedAt?: string;
+    hasQualified70?: boolean;
+    qualificationDate?: string;
     stage: string; 
     payment: Payment;
     interactions: Interaction[];
@@ -76,6 +147,12 @@ export interface Client {
     isComplete: boolean;
     filledFormPdf: string | null;
     googleDriveFolderId?: string;
+    refundPlan?: RefundPlan;
+    groupMetadata?: {
+        paymentMode: PaymentTrackingMode;
+        totalPlotsEntitlement: number;
+        memberCount: number;
+    };
 }
 
 export interface AmendmentRequest {

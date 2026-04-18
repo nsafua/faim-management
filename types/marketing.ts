@@ -1,4 +1,6 @@
 
+import { PlotSize } from './realEstate';
+
 export interface Promotion {
     id: number;
     title: string;
@@ -10,4 +12,9 @@ export interface Promotion {
     applicablePropertyId: number | 'all';
     status: 'Active' | 'Inactive';
     bannerImage?: string;
+    // Enhanced fields for pricing logic
+    targetPlotSize?: PlotSize;
+    numberOfPlots?: number;
+    originalPrice?: number;
+    promoPrice?: number;
 }

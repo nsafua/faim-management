@@ -1,0 +1,37 @@
+
+export type FormData = {
+    surname: string;
+    otherNames: string;
+    dateOfBirth: string;
+    currentAddress: string;
+    telephone: string;
+    email: string;
+    gender: string;
+    photo: string;
+    placeOfWork: string;
+    profession: string;
+    position: string;
+    kinName: string;
+    kinAddress: string;
+    kinPhone: string;
+    kinRelationship: string;
+    kinEmail: string;
+    witnessName: string;
+    witnessAddress: string;
+    witnessPhone: string;
+    paymentDate: string;
+    paymentMethod: 'Cash' | 'Bank Transfer' | 'MoMo' | 'Cheque' | 'Other';
+    location: string;
+    propertyType: 'Residential' | 'Commercial';
+    plotNumber: string;
+    numberOfPlots: string;
+    plannedDevelopmentYear: string;
+    filledFormPdf: string | null;
+    indentureName: string;
+    indentureAddress: string;
+    salesRep: string;
+    salesManager: string;
+    accountsHead: string;
+    clerk: string;
+    price: string;
+};

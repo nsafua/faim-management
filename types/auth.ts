@@ -1,4 +1,3 @@
-
 export interface Staff {
     id: string;
     fullName: string;
@@ -37,7 +36,7 @@ export interface PermissionSet {
     approve: boolean;
 }
 
-export type AppModuleName = 'Dashboard' | 'Clients' | 'Account Management' | 'Promotions' | 'Team' | 'Leads Management' | 'Administration' | 'CEO Hub' | 'Settings';
+export type AppModuleName = 'Dashboard' | 'Clients' | 'Account Management' | 'Promotions' | 'Team' | 'Leads Management' | 'Administration' | 'CEO Hub' | 'Settings' | 'Internal Mailing';
 
 export interface AppModule {
     id: AppModuleName;

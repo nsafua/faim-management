@@ -19,11 +19,38 @@
                 900: '#0f172a', // Dark Mode Sidebar
                 950: '#020617', // Dark Mode Background
               }
+            },
+            keyframes: {
+              'faim-fade-in': {
+                '0%': { opacity: '0', transform: 'translateY(4px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            },
+            animation: {
+              'faim-fade-in': 'faim-fade-in 0.4s ease-out forwards',
             }
           }
         }
       }
     </script>
+    <style>
+      /* Smooth transitions for common interactive elements */
+      * {
+        transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 200ms;
+      }
+      
+      /* Reset transitions for non-animated layout shifts to prevent jitter */
+      .no-transition, .no-transition * {
+        transition: none !important;
+      }
+
+      /* Specific utility for section entry */
+      .animate-entry {
+        animation: faim-fade-in 0.4s ease-out forwards;
+      }
+    </style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
   <script type="importmap">
 {
@@ -38,6 +65,7 @@
     "firebase/auth": "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js",
     "firebase/storage": "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js",
+    "firebase/functions": "https://www.gstatic.com/firebasejs/11.0.2/firebase-functions.js",
     "firebase/": "https://esm.sh/firebase@^12.7.0/",
     "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@5.28.4?external=react,react-dom",
     "react-window": "https://esm.sh/react-window@1.8.10?external=react,react-dom",
@@ -46,6 +74,7 @@
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-gray-100 dark:bg-gray-950 transition-colors duration-200">
     <div id="root"></div>

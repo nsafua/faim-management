@@ -6,7 +6,8 @@ export interface PaymentTransaction {
     method: 'Cash' | 'Bank Transfer' | 'MoMo' | 'Cheque' | 'Other';
     reference?: string;
     receiptNumber: string;
-    status: 'Success' | 'Failed';
+    // FIX: Included 'POSTED' and 'CONFIRMED' as valid statuses to match usage in authoritative finance logic
+    status: 'Success' | 'Failed' | 'POSTED' | 'CONFIRMED';
 }
 
 export interface Installment {

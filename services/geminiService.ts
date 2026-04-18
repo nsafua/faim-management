@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Client, Property, Invoice, Staff } from "../types";
 
@@ -11,6 +12,7 @@ export const suggestProperties = async (
     properties: Property[]
 ): Promise<PropertySuggestion[]> => {
     try {
+        // FIX: Always use new instance right before call for latest API key
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const clientPreferences = `
@@ -38,8 +40,9 @@ export const suggestProperties = async (
         Return the response as a JSON array.
       `;
 
+        // FIX: Use gemini-3-flash-preview for general matching tasks
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -81,6 +84,7 @@ export const analyzeAppData = async (
     analysisTopic: string
 ): Promise<string> => {
      try {
+        // FIX: Always use new instance right before call for latest API key
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         // Summarize data to send to the model to save tokens
@@ -116,8 +120,9 @@ export const analyzeAppData = async (
         Do not output in JSON format. Provide a clean, readable text or markdown report.
       `;
       
+      // FIX: Use gemini-3-pro-preview for complex analysis/STEM tasks
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-pro-preview',
         contents: prompt,
       });
 

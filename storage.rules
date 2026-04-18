@@ -1,43 +1,37 @@
-
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Helper function to check auth
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // --- System Branding (Logos, Favicons) ---
-    // CRITICAL: These must be publicly readable so they show up on the Login Page 
-    // before the user signs in.
     match /system/branding/{allPaths=**} {
       allow read: if true; 
-      allow write: if isAuthenticated(); // Only logged-in staff can update settings
+      allow write: if isAuthenticated();
     }
 
-    // --- Staff Profile Photos ---
     match /staff/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
-    // --- Client Files (Photos, Documents) ---
     match /clients/{clientId}/{allPaths=**} {
       allow read, write: if isAuthenticated();
     }
 
-    // --- Property Documents (Legal, Plans) ---
+    match /refunds/{clientId}/{allPaths=**} {
+        allow read, write: if isAuthenticated();
+    }
+
     match /properties/{propertyId}/{allPaths=**} {
       allow read, write: if isAuthenticated();
     }
 
-    // --- Promotion Banners ---
     match /promotions/{allPaths=**} {
       allow read, write: if isAuthenticated();
     }
 
-    // --- Amendment Request Scans ---
     match /amendments/{allPaths=**} {
       allow read, write: if isAuthenticated();
     }

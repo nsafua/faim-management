@@ -1,7 +1,6 @@
-
 import { db } from './firebase';
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, writeBatch, onSnapshot, updateDoc } from 'firebase/firestore';
-import { Staff, ActivityLog, Role, CompanySettings, RolePermission, AppModuleName, PermissionSet } from '../types';
+import { Staff, ActivityLog, Role, CompanySettings, RolePermission, AppModuleName, PermissionSet, AmendmentRequest } from '../types';
 import { 
     PROPERTIES, INVOICES, PROMOTIONS, COMPANY_SETTINGS, 
     AMENDMENT_REQUESTS, ROLES, ROLE_PERMISSIONS, APP_MODULES 
@@ -12,14 +11,31 @@ const LOGS_COL = 'activity_logs';
 const ROLES_COL = 'roles';
 const PERMISSIONS_COL = 'role_permissions';
 const SETTINGS_COL = 'settings';
-// Needed for seeding
 const PROPERTIES_COL = 'properties'; 
 const INVOICES_COL = 'invoices'; 
 const PROMOTIONS_COL = 'promotions'; 
 const AMENDMENTS_COL = 'amendments';
 
-const sanitizeData = <T>(data: T): T => {
-  return JSON.parse(JSON.stringify(data));
+const sanitizeData = (data: any, seen = new WeakSet()): any => {
+    if (data === null || typeof data !== 'object') {
+        return data === undefined ? null : data;
+    }
+    if (seen.has(data)) return "[Circular]";
+    if (data instanceof Date) return data.toISOString();
+    if (Array.isArray(data)) {
+        seen.add(data);
+        return data.map(item => sanitizeData(item, seen));
+    }
+
+    const sanitizedObj: any = {};
+    seen.add(data);
+    Object.keys(data).forEach(key => {
+        const value = data[key];
+        if (typeof value !== 'function' && value !== undefined) {
+            sanitizedObj[key] = sanitizeData(value, seen);
+        }
+    });
+    return sanitizedObj;
 };
 
 const fetchCollection = async <T>(colName: string): Promise<T[]> => {
@@ -138,7 +154,6 @@ export const fetchCompanySettings = async (): Promise<CompanySettings> => {
         const docRef = doc(db, SETTINGS_COL, 'main');
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-            // Ensure defaults are merged in case fields are missing in DB
             return { ...COMPANY_SETTINGS, ...docSnap.data() } as CompanySettings;
         } else {
             return COMPANY_SETTINGS;
@@ -152,6 +167,14 @@ export const persistCompanySettings = async (settings: CompanySettings) => {
     await setDoc(doc(db, SETTINGS_COL, 'main'), sanitizeData(settings));
 };
 
+// FIX: Added fetchAmendments to support useAmendments hook
+export const fetchAmendments = () => fetchCollection<AmendmentRequest>(AMENDMENTS_COL);
+
+// FIX: Added persistAmendment to support useAmendments hook
+export const persistAmendment = async (amendment: AmendmentRequest) => {
+    await setDoc(doc(db, AMENDMENTS_COL, String(amendment.id)), sanitizeData(amendment));
+};
+
 // --- Seeding ---
 export const seedDatabase = async () => {
     const batch = writeBatch(db);
@@ -160,7 +183,6 @@ export const seedDatabase = async () => {
     const shouldSeedData = propertiesSnap.empty;
 
     if (shouldSeedData) {
-        console.log("Seeding main app data...");
         PROPERTIES.forEach(p => batch.set(doc(db, PROPERTIES_COL, String(p.id)), sanitizeData(p)));
         INVOICES.forEach(i => batch.set(doc(db, INVOICES_COL, String(i.id)), sanitizeData(i)));
         PROMOTIONS.forEach(p => batch.set(doc(db, PROMOTIONS_COL, String(p.id)), sanitizeData(p)));
@@ -175,7 +197,6 @@ export const seedDatabase = async () => {
         const shouldSeedPermissions = !ceoPermissionsSnap.exists();
 
         if (shouldSeedPermissions) {
-            console.log("Seeding permissions...");
             const permissionsByRole: Record<string, any> = {};
             ROLE_PERMISSIONS.forEach(rp => {
                 if (!permissionsByRole[rp.roleId]) permissionsByRole[rp.roleId] = {};
@@ -189,11 +210,8 @@ export const seedDatabase = async () => {
 
         if (shouldSeedData || shouldSeedPermissions) {
             await batch.commit();
-            console.log("Database seeding complete.");
-        } else {
-            console.log("Database already seeded and up-to-date.");
         }
     } catch (e) {
-        console.error("Seeding check failed (possibly permission issue):", e);
+        console.error("Seeding check failed:", e);
     }
 };

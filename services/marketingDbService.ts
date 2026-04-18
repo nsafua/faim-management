@@ -5,8 +5,23 @@ import { Promotion } from '../types';
 
 const PROMOTIONS_COL = 'promotions';
 
-const sanitizeData = <T>(data: T): T => {
-  return JSON.parse(JSON.stringify(data));
+const sanitizeData = <T>(data: T, seen = new WeakSet()): T => {
+    if (data === null || typeof data !== 'object') return data;
+    if (seen.has(data)) return undefined as any;
+    seen.add(data);
+    if (Array.isArray(data)) {
+        return data.map(item => sanitizeData(item, seen)).filter(i => i !== undefined) as any;
+    }
+    const sanitizedObj: any = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined && typeof value !== 'function') {
+            const sanitizedValue = sanitizeData(value, seen);
+            if (sanitizedValue !== undefined) {
+                sanitizedObj[key] = sanitizedValue;
+            }
+        }
+    }
+    return sanitizedObj as T;
 };
 
 const fetchCollection = async <T>(colName: string): Promise<T[]> => {

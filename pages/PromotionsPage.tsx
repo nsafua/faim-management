@@ -1,13 +1,12 @@
 
-import React, { useState, ChangeEvent, FormEvent } from 'react';
+import React, { useState, ChangeEvent, FormEvent, useMemo } from 'react';
 import { Promotion, Property } from '../types';
-import { ArrowLeftIcon, PencilIcon, TrashIcon, UploadIcon } from '../components/icons/DummyIcons';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input, Select, Textarea } from '../components/ui/Input';
-import { TableContainer, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
-import { Badge } from '../components/ui/Badge';
+import { ArrowLeftIcon } from '../components/icons/DummyIcons';
 import { uploadFile } from '../services/storageService';
+
+// Modular Imports
+import { PromotionForm } from '../components/promotions/PromotionForm';
+import { PromotionList } from '../components/promotions/PromotionList';
 
 interface PromotionsPageProps {
     promotions: Promotion[];
@@ -28,6 +27,10 @@ const initialFormState: Omit<Promotion, 'id'> = {
     applicablePropertyId: 'all',
     status: 'Active',
     bannerImage: undefined,
+    targetPlotSize: '70x100 ft',
+    numberOfPlots: 1,
+    originalPrice: 0,
+    promoPrice: 0
 };
 
 const PromotionsPage: React.FC<PromotionsPageProps> = ({ promotions, onSavePromotion, onDeletePromotion, properties, showForm = false, onBack }) => {
@@ -36,6 +39,19 @@ const PromotionsPage: React.FC<PromotionsPageProps> = ({ promotions, onSavePromo
     const [bannerPreview, setBannerPreview] = useState<string | null>(null);
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Compute original price based on selected property
+    const currentOriginalPrice = useMemo(() => {
+        if (formData.applicablePropertyId === 'all') return 0;
+        const prop = properties.find(p => p.id === formData.applicablePropertyId);
+        return prop ? prop.price : 0;
+    }, [formData.applicablePropertyId, properties]);
+
+    // Real-time Promotional Price computation
+    const computedPromoPrice = useMemo(() => {
+        const discount = formData.discountValue || 0;
+        return Math.max(0, currentOriginalPrice - discount);
+    }, [currentOriginalPrice, formData.discountValue]);
 
     const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -80,6 +96,8 @@ const PromotionsPage: React.FC<PromotionsPageProps> = ({ promotions, onSavePromo
             const promoToSave: Promotion = {
                 id: editingId !== null ? editingId : Date.now(),
                 ...formData,
+                originalPrice: currentOriginalPrice,
+                promoPrice: computedPromoPrice,
                 bannerImage: bannerUrl,
             };
             await onSavePromotion(promoToSave);
@@ -104,9 +122,13 @@ const PromotionsPage: React.FC<PromotionsPageProps> = ({ promotions, onSavePromo
             applicablePropertyId: promo.applicablePropertyId,
             status: promo.status,
             bannerImage: promo.bannerImage,
+            targetPlotSize: promo.targetPlotSize || '70x100 ft',
+            numberOfPlots: promo.numberOfPlots || 1,
+            originalPrice: promo.originalPrice || 0,
+            promoPrice: promo.promoPrice || 0
         });
         setBannerPreview(promo.bannerImage || null);
-        setBannerFile(null); // Reset file input
+        setBannerFile(null);
         window.scrollTo(0, 0);
     };
 
@@ -126,83 +148,30 @@ const PromotionsPage: React.FC<PromotionsPageProps> = ({ promotions, onSavePromo
                 <p className="text-gray-500 dark:text-gray-400 mt-1">Create, manage, and track all marketing promotions.</p>
             </div>
 
-            {/* Promo Creation Form - Conditionally Rendered */}
             {showForm && (
-              <Card title={editingId ? 'Edit Promotion' : 'Create New Promotion'}>
-                  <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <Input label="Promo Title*" name="title" value={formData.title} onChange={handleInputChange} required />
-                      <div className="md:col-span-2">
-                          <Textarea label="Promo Description*" name="description" value={formData.description} onChange={handleInputChange} required rows={1} />
-                      </div>
-                      <Select label="Promo Type" name="promoType" value={formData.promoType} onChange={handleInputChange}>
-                          <option>Discount</option><option>Free Plot</option><option>Referral Bonus</option><option>Seasonal Offer</option><option>Other</option>
-                      </Select>
-                      <Input label="Start Date" type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} />
-                      <Input label="End Date" type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} />
-                      <Input label="Discount % or Value" type="number" name="discountValue" value={formData.discountValue} onChange={handleInputChange} />
-                      <Select label="Applicable Property" name="applicablePropertyId" value={formData.applicablePropertyId} onChange={handleInputChange}>
-                          <option value="all">All Properties</option>
-                          {properties.map(p => <option key={p.id} value={p.id}>{p.location}</option>)}
-                      </Select>
-                      <Select label="Promo Status" name="status" value={formData.status} onChange={handleInputChange}>
-                          <option value="Active">Active</option><option value="Inactive">Inactive</option>
-                      </Select>
-                       <div className="md:col-span-3">
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Banner Image</label>
-                          <div className="mt-1 flex items-center gap-4">
-                             {bannerPreview && <img src={bannerPreview} alt="Banner" className="h-12 w-24 object-cover rounded-md" />}
-                             <label htmlFor="banner-upload" className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center gap-2 transition-colors">
-                                <UploadIcon className="w-5 h-5"/>
-                                <span>{bannerFile ? 'Change Image' : (bannerPreview ? 'Change Image' : 'Upload Image')}</span>
-                                <input id="banner-upload" name="bannerImage" type="file" className="sr-only" onChange={handleFileChange} accept="image/*" />
-                             </label>
-                          </div>
-                      </div>
-                      <div className="md:col-span-3 flex justify-end gap-3 mt-4">
-                          <Button type="button" variant="secondary" onClick={handleReset}>Cancel</Button>
-                          <Button type="submit" isLoading={isSaving}>{editingId ? 'Update Promotion' : 'Save Promotion'}</Button>
-                      </div>
-                  </form>
-              </Card>
+                <PromotionForm 
+                    formData={formData}
+                    editingId={editingId}
+                    properties={properties}
+                    currentOriginalPrice={currentOriginalPrice}
+                    computedPromoPrice={computedPromoPrice}
+                    bannerPreview={bannerPreview}
+                    bannerFile={bannerFile}
+                    isSaving={isSaving}
+                    onInputChange={handleInputChange}
+                    onFileChange={handleFileChange}
+                    onSubmit={handleSubmit}
+                    onReset={handleReset}
+                />
             )}
 
-            {/* Promo List */}
-            <TableContainer>
-                <table className="w-full text-sm text-left">
-                    <Thead>
-                        <tr>
-                            <Th>Title</Th>
-                            <Th>Type</Th>
-                            <Th>Duration</Th>
-                            <Th>Applicable To</Th>
-                            <Th className="text-center">Status</Th>
-                            <Th className="text-center">Actions</Th>
-                        </tr>
-                    </Thead>
-                    <Tbody>
-                        {promotions.map(promo => (
-                            <Tr key={promo.id}>
-                                <Td className="font-medium text-gray-900 dark:text-white">{promo.title}</Td>
-                                <Td className="text-gray-600 dark:text-gray-300">{promo.promoType}</Td>
-                                <Td className="text-gray-600 dark:text-gray-300">{promo.startDate} to {promo.endDate}</Td>
-                                <Td className="text-gray-600 dark:text-gray-300">{promo.applicablePropertyId === 'all' ? 'All Properties' : properties.find(p=>p.id === promo.applicablePropertyId)?.location}</Td>
-                                <Td className="text-center">
-                                    <button onClick={() => handleStatusToggle(promo)}>
-                                        <Badge variant={promo.status === 'Active' ? 'success' : 'danger'}>{promo.status}</Badge>
-                                    </button>
-                                </Td>
-                                <Td className="text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button onClick={() => handleEdit(promo)} className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 p-1"><PencilIcon className="w-5 h-5"/></button>
-                                        <button onClick={() => handleDelete(promo.id)} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 p-1"><TrashIcon className="w-5 h-5"/></button>
-                                    </div>
-                                </Td>
-                            </Tr>
-                        ))}
-                    </Tbody>
-                </table>
-                {promotions.length === 0 && <div className="text-center py-10 text-gray-500 dark:text-gray-400">No promotions found.</div>}
-            </TableContainer>
+            <PromotionList 
+                promotions={promotions}
+                properties={properties}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onStatusToggle={handleStatusToggle}
+            />
         </div>
     );
 };

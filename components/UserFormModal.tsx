@@ -4,11 +4,14 @@ import { Staff, Role } from '../types';
 import { XIcon } from './icons/XIcon';
 import { PhoneInput } from './ui/PhoneInput';
 import { EmailInput } from './ui/EmailInput';
+import { LockClosedIcon, ShieldCheckIcon, ExclamationTriangleIcon, EyeIcon, EyeSlashIcon } from './icons/DummyIcons';
+import { Badge } from './ui/Badge';
+import { LoaderIcon } from './icons/LoaderIcon';
 
 interface StaffFormModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (staffData: Partial<Staff>) => void;
+    onSave: (staffData: Partial<Staff>) => Promise<void>;
     editingUser: Staff | null;
     roles: Role[];
 }
@@ -18,13 +21,18 @@ const UserFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSave,
         fullName: '',
         phone: '',
         email: '',
-        roleId: '', // Default as empty string or a valid role ID
+        roleId: '',
         password: '',
         status: 'Active' as Staff['status'],
     });
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
+            setError(null);
+            setShowPassword(false);
             if (editingUser) {
                 setFormData({
                     fullName: editingUser.fullName,
@@ -52,64 +60,182 @@ const UserFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, onSave,
         setFormData(prev => ({...prev, [name]: value}));
     };
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if(!editingUser && !formData.password) {
-            alert("Password is required for new staff members.");
+        setError(null);
+
+        // Security Validation
+        if(!editingUser && (!formData.password || formData.password.length < 6)) {
+            setError("Security Requirement: Password must be at least 6 characters long.");
             return;
         }
-        onSave(formData);
+
+        setIsSaving(true);
+        try {
+            await onSave(formData);
+            onClose();
+        } catch (err: any) {
+            setError(err.message || "An unexpected system error occurred.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
-                <form onSubmit={handleSubmit}>
-                    <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white">{editingUser ? 'Edit Staff Account' : 'Create New Staff Account'}</h3>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><XIcon /></button>
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+                <form onSubmit={handleSubmit} className="flex flex-col h-full">
+                    <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                            {editingUser ? 'Edit Staff Account' : 'Create New Staff Account'}
+                        </h3>
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <XIcon className="w-6 h-6" />
+                        </button>
                     </div>
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name*</label>
-                            <input type="text" name="fullName" id="fullName" value={formData.fullName} onChange={handleChange} required className="mt-1 input-class" />
+
+                    <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+                        {error && (
+                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded flex items-start gap-3 animate-in fade-in slide-in-from-top-1">
+                                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                                <p className="text-sm text-red-800 dark:text-red-200 font-medium">{error}</p>
+                            </div>
+                        )}
+
+                        {/* Section 1: Profile Details */}
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 dark:border-gray-700 pb-2">Profile Details</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name*</label>
+                                    <input type="text" name="fullName" id="fullName" value={formData.fullName} onChange={handleChange} required className="mt-1 input-class" />
+                                </div>
+                                <div>
+                                    <PhoneInput label="Phone Number" id="phone" name="phone" value={formData.phone} onChange={(val) => setFormData(prev => ({...prev, phone: val}))} />
+                                </div>
+                                <div>
+                                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Status*</label>
+                                    <select name="status" id="status" value={formData.status} onChange={handleChange} required className="mt-1 input-class">
+                                        <option value="Active">Active</option>
+                                        <option value="Inactive">Inactive</option>
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label htmlFor="roleId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">System Role*</label>
+                                    <select name="roleId" id="roleId" value={formData.roleId} onChange={handleChange} required className="mt-1 input-class">
+                                        {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <PhoneInput label="Phone Number" id="phone" name="phone" value={formData.phone} onChange={(val) => setFormData(prev => ({...prev, phone: val}))} />
-                        </div>
-                        <div>
-                            <EmailInput label="Email Address*" id="email" name="email" value={formData.email} onChange={(val) => setFormData(prev => ({...prev, email: val}))} required />
-                        </div>
-                        <div>
-                            <label htmlFor="roleId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role*</label>
-                            <select name="roleId" id="roleId" value={formData.roleId} onChange={handleChange} required className="mt-1 input-class">
-                                {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status*</label>
-                            <select name="status" id="status" value={formData.status} onChange={handleChange} required className="mt-1 input-class">
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
-                        </div>
-                         <div className="md:col-span-2">
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {editingUser ? 'Reset Password (optional)' : 'Password*'}
-                            </label>
-                            <input type="password" name="password" id="password" value={formData.password} onChange={handleChange} placeholder={editingUser ? 'Leave blank to keep current password' : ''} className="mt-1 input-class" />
+
+                        {/* Section 2: Login Information */}
+                        <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Login Information</h4>
+                                {editingUser && (
+                                    <Badge variant="success" className="flex items-center gap-1">
+                                        <ShieldCheckIcon className="w-3 h-3" /> Password Configured
+                                    </Badge>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Login Email</label>
+                                    <div className="mt-1 relative rounded-md shadow-sm">
+                                        <input
+                                            type="email"
+                                            value={formData.email}
+                                            readOnly={!!editingUser}
+                                            disabled={!!editingUser}
+                                            onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                                            className={`input-class ${editingUser ? 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed text-gray-500' : ''}`}
+                                            placeholder="staff@faim.com"
+                                            required
+                                        />
+                                        {editingUser && (
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <LockClosedIcon className="h-4 w-4 text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {editingUser && <p className="mt-1 text-[10px] text-gray-400 italic">Login identifier is managed by system administrators.</p>}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {editingUser ? 'Reset Account Password' : 'Initial Password*'}
+                                    </label>
+                                    <div className="relative mt-1">
+                                        <input 
+                                            type={showPassword ? "text" : "password"} 
+                                            name="password" 
+                                            id="password" 
+                                            value={formData.password} 
+                                            onChange={handleChange} 
+                                            placeholder={editingUser ? 'Leave blank to keep existing password' : 'Min 6 characters'} 
+                                            className={`input-class pr-10 font-mono ${error?.includes("Password") ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                        />
+                                        <button
+                                            type="button"
+                                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                        >
+                                            {showPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3 rounded-b-lg">
-                        <button type="button" onClick={onClose} className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
-                        <button type="submit" className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">
-                            {editingUser ? 'Save Changes' : 'Create Staff'}
+
+                    <div className="p-5 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700">
+                        <button 
+                            type="button" 
+                            disabled={isSaving}
+                            onClick={onClose} 
+                            className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-bold py-2.5 px-5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all text-sm disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            disabled={isSaving}
+                            className="bg-blue-600 text-white font-black uppercase tracking-widest py-2.5 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg active:scale-[0.98] text-sm flex items-center gap-2 disabled:opacity-50"
+                        >
+                            {isSaving && <LoaderIcon className="w-4 h-4 animate-spin" />}
+                            {editingUser ? 'Save Changes' : 'Create Account'}
                         </button>
                     </div>
                 </form>
-                <style>{`.input-class { display: block; width: 100%; padding: 0.5rem 0.75rem; background-color: white; border: 1px solid #D1D5DB; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); color: #111827; } .dark .input-class { background-color: #111827; border-color: #374151; color: #ffffff; } .input-class:focus { outline: none; --tw-ring-color: #3B82F6; border-color: #3B82F6; }`}</style>
+                <style>{`
+                    .input-class { 
+                        display: block; 
+                        width: 100%; 
+                        padding: 0.625rem 0.75rem; 
+                        background-color: white; 
+                        border: 1px solid #D1D5DB; 
+                        border-radius: 0.5rem; 
+                        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); 
+                        color: #111827; 
+                        font-size: 0.875rem;
+                        transition: all 0.2s;
+                    } 
+                    .dark .input-class { 
+                        background-color: #0f172a; 
+                        border-color: #374151; 
+                        color: #ffffff; 
+                    } 
+                    .input-class:focus { 
+                        outline: none; 
+                        ring: 2px;
+                        border-color: #3B82F6; 
+                        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                    }
+                `}</style>
             </div>
         </div>
     );

@@ -1,122 +1,162 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Property, Staff } from '../types';
-import { ArrowLeftIcon } from '../components/icons/DummyIcons';
-import { TableContainer, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
-import { Badge } from '../components/ui/Badge';
+import { 
+  ArrowLeftIcon, 
+  PrinterIcon, 
+  PencilSquareIcon,
+  BanknotesIcon,
+  CheckCircleIcon,
+  MapIcon
+} from '../components/icons/DummyIcons';
+import { Button } from '../components/ui/Button';
+import { useProperties } from '../hooks/useAppData';
+
+// Modular Imports
+import { FinancialConfiguration } from '../components/properties/FinancialConfiguration';
+import { PlotIdentifierConfig } from '../components/properties/PlotIdentifierConfig';
+import { InventoryTable } from '../components/properties/InventoryTable';
+import { AcquisitionDetails } from '../components/properties/AcquisitionDetails';
 
 interface PropertiesPageProps {
   properties: Property[];
   onBack?: () => void;
   currentStaff: Staff;
+  initialProperty?: Property | null;
 }
 
-const getRegistrationStatusBadgeVariant = (status: Property['registrationStatus']) => {
-  switch (status) {
-    case 'Titled': return 'info';
-    case 'Indenture': return 'purple';
-    case 'Plotted': return 'warning';
-    default: return 'neutral';
+const PropertiesPage: React.FC<PropertiesPageProps> = ({ onBack, initialProperty }) => {
+  const { saveProperty } = useProperties();
+  const [viewingProperty, setViewingProperty] = useState<Property | null>(initialProperty || null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [localPropData, setLocalPropData] = useState<Property | null>(initialProperty || null);
+
+  useEffect(() => {
+    if (initialProperty) {
+        setViewingProperty(initialProperty);
+        setLocalPropData({ ...initialProperty });
+    }
+  }, [initialProperty]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleSaveAmendment = async () => {
+    if (localPropData) {
+      await saveProperty(localPropData);
+      setIsEditMode(false);
+      alert("Amendments saved successfully.");
+    }
+  };
+
+  const handleUpdateLocal = (updates: Partial<Property>) => {
+      setLocalPropData(prev => prev ? { ...prev, ...updates } : null);
   }
-};
 
-const formatCurrency = (amount: number) => `GHC ${new Intl.NumberFormat('en-GH').format(amount)}`;
-
-const PropertiesPage: React.FC<PropertiesPageProps> = ({ properties, onBack }) => {
-  return (
-    <div className="space-y-6">
-      <div>
-        {onBack && (
-            <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-2 transition-colors">
-                <ArrowLeftIcon className="w-5 h-5" /> Back to CEO Hub
+  if (viewingProperty && localPropData) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
+          <div className="flex items-center gap-4">
+            <button onClick={onBack} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 transition-all">
+              <ArrowLeftIcon className="w-5 h-5" />
             </button>
-        )}
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Properties</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all property listings, inventory, and registration details.</p>
-      </div>
-
-      <TableContainer>
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-            <Thead>
-                <tr>
-                    <Th>Location</Th>
-                    <Th>Registration Status</Th>
-                    <Th>Plot Inventory</Th>
-                    <Th className="text-right">Price per Plot</Th>
-                    <Th className="text-center">Availability</Th>
-                </tr>
-            </Thead>
-            <Tbody>
-                {properties.map(prop => {
-                    const totalPlots = prop.inventory.reduce((sum, inv) => sum + inv.count, 0);
-                    const plotsSold = prop.inventory.reduce((sum, inv) => sum + inv.sold, 0);
-                    const plotsAvailable = totalPlots - plotsSold;
-                    const soldPercentage = totalPlots > 0 ? (plotsSold / totalPlots) * 100 : 0;
-                    const isAvailable = plotsAvailable > 0;
-                    
-                    const isDiscountActive = prop.discount && new Date(prop.discount.endDate) >= new Date();
-                    const discountedPrice = isDiscountActive ? prop.price * (1 - prop.discount.percentage / 100) : prop.price;
-
-                    return (
-                        <Tr key={prop.id}>
-                            <Td className="font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                                {prop.location}
-                            </Td>
-                            <Td>
-                                <Badge variant={getRegistrationStatusBadgeVariant(prop.registrationStatus)}>
-                                    {prop.registrationStatus}
-                                </Badge>
-                            </Td>
-                            <Td>
-                                <div className="flex flex-col min-w-[180px]">
-                                    <div className="flex justify-between text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                                        <span>{plotsSold} Sold / {totalPlots} Total</span>
-                                        <span>({plotsAvailable} Left)</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                        <div 
-                                            className="bg-blue-600 h-2 rounded-full" 
-                                            style={{ width: `${soldPercentage}%` }}
-                                            role="progressbar"
-                                            aria-valuenow={soldPercentage}
-                                            aria-valuemin={0}
-                                            aria-valuemax={100}
-                                        ></div>
-                                    </div>
-                                </div>
-                            </Td>
-                            <Td className="font-semibold text-gray-800 dark:text-white text-right">
-                               {isDiscountActive ? (
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-green-600 dark:text-green-400 font-bold">{formatCurrency(discountedPrice)}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-red-500 line-through">{formatCurrency(prop.price)}</span>
-                                            <Badge variant="success" className="text-[10px] px-1 py-0">
-                                                {prop.discount?.percentage}% OFF
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    formatCurrency(prop.price)
-                                )}
-                            </Td>
-                            <Td className="text-center">
-                                <Badge variant={isAvailable ? 'success' : 'danger'}>
-                                    {isAvailable ? 'Available' : 'Sold Out'}
-                                </Badge>
-                            </Td>
-                        </Tr>
-                    );
-                })}
-            </Tbody>
-        </table>
-        {properties.length === 0 && (
-            <div className="text-center py-10">
-                <p className="text-gray-500 dark:text-gray-400">No properties found.</p>
+            <div>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Property Dossier</h1>
+              <p className="text-sm text-gray-500 font-medium">{localPropData.location} — Ref: {localPropData.id}</p>
             </div>
-        )}
-      </TableContainer>
+          </div>
+          <div className="flex gap-3 w-full md:w-auto">
+            <Button variant="secondary" icon={<PrinterIcon className="w-4 h-4" />} onClick={handlePrint} className="flex-1">
+              Print Dossier
+            </Button>
+            {!isEditMode ? (
+              <Button icon={<PencilSquareIcon className="w-4 h-4" />} onClick={() => setIsEditMode(true)} className="flex-1">
+                Amendment
+              </Button>
+            ) : (
+              <Button variant="success" icon={<CheckCircleIcon className="w-4 h-4" />} onClick={handleSaveAmendment} className="flex-1">
+                Save Changes
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div id="printable-dossier" className="space-y-8 pb-20">
+          <section className="space-y-6 break-after-page">
+            <div className="border-b-4 border-blue-600 pb-2">
+              <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase flex items-center gap-2">
+                <BanknotesIcon className="w-6 h-6 text-blue-600" />
+                Page 1: Sales & Purchase Management
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <FinancialConfiguration 
+                    property={localPropData} 
+                    isEditMode={isEditMode} 
+                    onChange={handleUpdateLocal} 
+                />
+                <PlotIdentifierConfig 
+                    property={localPropData} 
+                    isEditMode={isEditMode} 
+                    onChange={handleUpdateLocal} 
+                />
+            </div>
+
+            <InventoryTable 
+                inventory={localPropData.inventory} 
+                isEditMode={isEditMode} 
+                onChange={(inv) => handleUpdateLocal({ inventory: inv })} 
+            />
+          </section>
+
+          <section className="space-y-6">
+            <div className="border-b-4 border-amber-600 pb-2">
+              <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase flex items-center gap-2">
+                <MapIcon className="w-6 h-6 text-amber-600" />
+                Page 2: Land Acquisition Details
+              </h2>
+            </div>
+
+            <AcquisitionDetails 
+                property={localPropData} 
+                isEditMode={isEditMode} 
+                onChange={handleUpdateLocal} 
+            />
+          </section>
+        </div>
+
+        <style>{`
+          @media print {
+            body { background: white; }
+            .sidebar, header, nav, button, .print\\:hidden { display: none !important; }
+            main { padding: 0 !important; margin: 0 !important; overflow: visible !important; }
+            .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
+            #printable-dossier { margin: 0; padding: 0; }
+            .break-after-page { page-break-after: always; }
+            input, textarea, select { 
+              border: none !important; 
+              background: transparent !important; 
+              padding: 0 !important; 
+              appearance: none !important;
+              color: black !important;
+              box-shadow: none !important;
+            }
+            label { color: #666 !important; }
+            .card { border: 1px solid #eee !important; box-shadow: none !important; margin-bottom: 2rem; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center h-64 text-gray-500 italic">
+        Select a property from Purchase & Sale Management to view its dossier.
     </div>
   );
 };
+
 export default PropertiesPage;
