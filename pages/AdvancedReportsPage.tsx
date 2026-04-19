@@ -68,13 +68,15 @@ const AdvancedReportsPage: React.FC<AdvancedReportsPageProps> = ({ onBack, repor
                                 </Td>
                             </Tr>
                         ))}
+                        {reports.length === 0 && (
+                            <Tr>
+                                <Td colSpan={5} className="py-20 text-center text-gray-400 italic">
+                                    No generated reports found.
+                                </Td>
+                            </Tr>
+                        )}
                     </Tbody>
                 </table>
-                {reports.length === 0 && (
-                    <div className="text-center py-10">
-                        <p className="text-gray-500 dark:text-gray-400">No generated reports found.</p>
-                    </div>
-                )}
             </TableContainer>
         </div>
     );

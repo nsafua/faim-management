@@ -121,20 +121,20 @@ const LeavePage: React.FC = () => {
 
             <Card className="p-0 overflow-hidden">
                 <TableContainer className="border-0 shadow-none">
-                    <table className="w-full text-sm text-left">
-                        <Thead>
-                            <tr>
-                                <Th>Employee</Th>
-                                <Th>Leave Type</Th>
-                                <Th>Duration</Th>
-                                <Th>Days</Th>
-                                <Th className="text-center">Status</Th>
-                                <Th className="text-right">Actions</Th>
-                            </tr>
-                        </Thead>
-                        <Tbody>
-                            {filteredRequests.map(req => (
-                                <Tr key={req.id}>
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <Thead>
+                        <tr>
+                            <Th>Employee</Th>
+                            <Th>Leave Type</Th>
+                            <Th>Duration</Th>
+                            <Th>Days</Th>
+                            <Th className="text-center">Status</Th>
+                            <Th className="text-right">Actions</Th>
+                        </tr>
+                    </Thead>
+                    <Tbody>
+                        {filteredRequests.map(req => (
+                            <Tr key={req.id}>
                                     <Td className="font-bold text-gray-900 dark:text-white">
                                         <div className="flex items-center gap-2">
                                             <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 text-[10px]">

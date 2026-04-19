@@ -132,7 +132,7 @@ const MessagingPage: React.FC = () => {
                     </Card>
 
                     <TableContainer>
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                             <Thead>
                                 <tr>
                                     <Th>Recipient</Th>

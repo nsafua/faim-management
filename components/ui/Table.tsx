@@ -3,7 +3,7 @@ import React from 'react';
 
 export const TableContainer: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className = '' }) => (
   <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto transition-colors duration-200 ${className}`}>
-    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">{children}</table>
+    {children}
   </div>
 );
 
