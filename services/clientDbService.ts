@@ -1,6 +1,7 @@
 import { db } from './firebase';
 import { collection, getDocs, doc, setDoc, query, where, limit, deleteDoc, orderBy, startAfter, QueryDocumentSnapshot, DocumentData, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Client, MilestoneRecord, RefundRecord, RefundTransaction, RefundStatus } from '../types';
+import { sanitizeData } from './dbUtils';
 
 const CLIENTS_COL = 'clients';
 const REFUNDS_COL = 'refunds';
@@ -8,29 +9,6 @@ const REFUND_TXN_COL = 'refund_transactions';
 
 const normalizePhone = (p: string) => p.replace(/\D/g, '').slice(-9);
 const normalizeEmail = (e: string) => e.trim().toLowerCase();
-
-// Helper to sanitize data for Firestore (handle undefined and circular refs)
-const sanitizeData = (data: any, seen = new WeakSet()): any => {
-    if (data === null || typeof data !== 'object') {
-        return data === undefined ? null : data;
-    }
-    if (seen.has(data)) return "[Circular]";
-    if (data instanceof Date) return data.toISOString();
-    if (Array.isArray(data)) {
-        seen.add(data);
-        return data.map(item => sanitizeData(item, seen));
-    }
-
-    const sanitizedObj: any = {};
-    seen.add(data);
-    Object.keys(data).forEach(key => {
-        const value = data[key];
-        if (typeof value !== 'function' && value !== undefined) {
-            sanitizedObj[key] = sanitizeData(value, seen);
-        }
-    });
-    return sanitizedObj;
-};
 
 /**
  * Deterministic Merge Logic

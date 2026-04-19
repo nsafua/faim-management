@@ -125,7 +125,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               src={sidebarLogo} 
               alt={`${companySettings.name} Logo`} 
               className="w-12 h-12 object-contain"
-              onError={() => setLogoError(true)}
+              onError={(e) => {
+                 console.error("Sidebar logo failed to load. URL was:", sidebarLogo, "Error event:", e);
+                 setLogoError(true);
+              }}
+              referrerPolicy="no-referrer"
             />
           ) : (
             <FaimLogoIcon className="w-10 h-10 text-white" />

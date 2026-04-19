@@ -107,7 +107,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, companySettings, externa
                         src={activeAppLogo} 
                         alt="App Logo" 
                         className="w-10 h-10 object-contain"
-                        onError={() => setAppLogoError(true)}
+                        onError={(e) => {
+                             console.error("LoginPage app logo failed to load. URL was:", activeAppLogo, "Error event:", e);
+                             setAppLogoError(true);
+                        }}
+                        referrerPolicy="no-referrer"
                     />
                 ) : (
                     <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
@@ -131,6 +135,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, companySettings, externa
                             alt="Company Logo" 
                             className="w-64 h-auto max-h-64 object-contain mb-1"
                             onError={() => setCompanyLogoError(true)}
+                            referrerPolicy="no-referrer"
                         />
                     ) : (
                         <FaimLogoIcon className="w-24 h-24 text-blue-600 dark:text-blue-400 mb-1" />
